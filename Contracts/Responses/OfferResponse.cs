@@ -1,12 +1,14 @@
-﻿using System;
+﻿using Project_X.Contracts.Enumerations;
+using Project_X.Shared;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Project_X.Models
+namespace Project_X.Contracts.Responses
 {
-    public class Offer
+    public class OfferResponse
     {
         public long Id { get; set; }
         public string Category { get; set; }
@@ -16,7 +18,5 @@ namespace Project_X.Models
         public string Type { get; set; }
         public string ExperienceLowerBound { get; set; }
         public string ExperienceUpperBound { get; set; }
-        public virtual Company Company { get; set; }
-        public virtual ICollection<Application> Applications { get; set; }
     }
 }

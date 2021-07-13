@@ -11,10 +11,5 @@ namespace Project_X.Shared
         public const string PhotoPrefix = "photo";
 
         public const string ResumePrefix = "resume";
-
-        public static string GenerateFileName(string prefix, string fileName)
-        {
-            return $"{prefix}_{Guid.NewGuid().ToString()}{Path.GetExtension(fileName)}";
-        }
     }
 }

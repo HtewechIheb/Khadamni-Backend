@@ -4,6 +4,7 @@ using Project_X.Contracts.Responses;
 using Project_X.Models;
 using Project_X.Services;
 using static Project_X.Shared.GlobalConstants;
+using static Project_X.Shared.GlobalMethods;
 using System;
 using System.Collections.Generic;
 using System.Linq;
