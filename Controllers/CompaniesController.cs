@@ -3,11 +3,14 @@ using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
 using Project_X.Models;
 using Project_X.Services;
+using static Project_X.Shared.GlobalConstants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.Net.Http.Headers;
 
 namespace Project_X.Controllers
 {
@@ -72,36 +75,44 @@ namespace Project_X.Controllers
 
         [HttpPost]
         [Route("")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         [ProducesDefaultResponseType]
-        public async Task<IActionResult> Add([FromBody] AddCompanyRequest companyRequest)
+        public async Task<IActionResult> Add([FromForm] AddCompanyRequest companyRequest)
         {
-            var company = new Company
-            {
-                Name = companyRequest.Name,
-                Address = companyRequest.Address,
-                Description = companyRequest.Description
-            };
-
             if (ModelState.IsValid)
             {
-                if (await _companyService.AddCompany(company))
+                using(MemoryStream photoFileStream = new MemoryStream())
                 {
-                    var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/companies/{company.Id}";
-                    var companyResponse = new CompanyResponse
+                    await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
+
+                    var company = new Company
                     {
-                        Id = company.Id,
-                        Name = company.Name,
-                        Address = company.Address,
-                        Description = company.Description
+                        Name = companyRequest.Name,
+                        Address = companyRequest.Address,
+                        Description = companyRequest.Description,
+                        PhotoFile = photoFileStream.ToArray(),
+                        PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName)
                     };
 
-                    return Created(locationUrl, companyResponse);
-                }
-                else
-                {
-                    return BadRequest("Internal Error Occured While Adding Company!");
+                    if (await _companyService.AddCompany(company))
+                    {
+                        var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/companies/{company.Id}";
+                        var companyResponse = new CompanyResponse
+                        {
+                            Id = company.Id,
+                            Name = company.Name,
+                            Address = company.Address,
+                            Description = company.Description
+                        };
+
+                        return Created(locationUrl, companyResponse);
+                    }
+                    else
+                    {
+                        return BadRequest("Internal Error Occured While Adding Company!");
+                    }
                 }
             }
             else
@@ -115,40 +126,84 @@ namespace Project_X.Controllers
             }
         }
 
+        [HttpGet]
+        [Route("{id:long}/photo")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesDefaultResponseType]
+        public async Task<IActionResult> DownloadPhoto(long id)
+        {
+            var company = await _companyService.GetCompanyById(id);
+            if (company != null)
+            {
+                var byteStream = new MemoryStream(company.PhotoFile);
+                return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
+                {
+                    FileDownloadName = company.PhotoFileName
+                };
+            }
+            else
+            {
+                return NotFound($"Company With ID {id} Does Not Exist!");
+            }
+        }
+
         [HttpPut]
         [Route("{id:long}")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         [ProducesDefaultResponseType]
-        public async Task<IActionResult> Update([FromBody] UpdateCompanyRequest companyRequest, [FromRoute] long id)
+        public async Task<IActionResult> Update([FromForm] UpdateCompanyRequest companyRequest, [FromRoute] long id)
         {
-            var companyToUpdate = await _companyService.GetCompanyById(id);
-            if(companyToUpdate != null)
+            if (ModelState.IsValid)
             {
-                companyToUpdate.Name = companyRequest.Name;
-                companyToUpdate.Address = companyRequest.Address;
-                companyToUpdate.Description = companyRequest.Description;
-
-                if(await _companyService.UpdateCompany(companyToUpdate))
+                var companyToUpdate = await _companyService.GetCompanyById(id);
+                if (companyToUpdate != null)
                 {
-                    var companyResponse = new CompanyResponse
+                    using (MemoryStream photoFileStream = new MemoryStream())
                     {
-                        Id = companyToUpdate.Id,
-                        Name = companyToUpdate.Name,
-                        Address = companyToUpdate.Address,
-                        Description = companyToUpdate.Description
-                    };
+                        companyToUpdate.Name = companyRequest.Name ?? companyToUpdate.Name;
+                        companyToUpdate.Address = companyRequest.Address ?? companyToUpdate.Address;
+                        companyToUpdate.Description = companyRequest.Description ?? companyToUpdate.Description;
+                        if (companyRequest.PhotoFile != null)
+                        {
+                            await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
+                            companyToUpdate.PhotoFile = photoFileStream.ToArray();
+                            companyToUpdate.PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName);
+                        }
+                    }
 
-                    return Ok(companyResponse);
+
+                    if (await _companyService.UpdateCompany(companyToUpdate))
+                    {
+                        var companyResponse = new CompanyResponse
+                        {
+                            Id = companyToUpdate.Id,
+                            Name = companyToUpdate.Name,
+                            Address = companyToUpdate.Address,
+                            Description = companyToUpdate.Description
+                        };
+
+                        return Ok(companyResponse);
+                    }
+                    else
+                    {
+                        return BadRequest("Internal Error Occured While Updating Company!");
+                    }
                 }
                 else
                 {
-                    return BadRequest("Internal Error Occured While Updating Company!");
+                    return BadRequest($"Company With ID {id} Does Not Exist!");
                 }
             }
             else
             {
-                return BadRequest($"Company With ID {id} Does Not Exist!");
+                var errorResponse = new ErrorResponse
+                {
+                    Errors = ModelState.Values.SelectMany(value => value.Errors.Select(error => error.ErrorMessage))
+                };
+
+                return BadRequest(errorResponse);
             }
         }
 

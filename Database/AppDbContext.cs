@@ -26,6 +26,12 @@ namespace Project_X.Database
             modelBuilder.Entity<Company>()
                 .Property(company => company.Address)
                 .IsRequired();
+            modelBuilder.Entity<Company>()
+               .Property(company => company.PhotoFile)
+               .IsRequired();
+            modelBuilder.Entity<Company>()
+               .Property(company => company.PhotoFileName)
+               .IsRequired();
 
             modelBuilder.Entity<Offer>()
                 .HasKey(offer => offer.Id);
@@ -47,24 +53,24 @@ namespace Project_X.Database
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Candidate>()
-                .HasKey(offer => offer.Id);
+                .HasKey(candidate => candidate.Id);
             modelBuilder.Entity<Candidate>()
-                .Property(offer => offer.FirstName)
+                .Property(candidate => candidate.FirstName)
                 .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(offer => offer.LastName)
+               .Property(candidate => candidate.LastName)
                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(offer => offer.ResumeFile)
+               .Property(candidate => candidate.ResumeFile)
                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(offer => offer.ResumeFileName)
+               .Property(candidate => candidate.ResumeFileName)
                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(offer => offer.PhotoFile)
+               .Property(candidate => candidate.PhotoFile)
                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(offer => offer.PhotoFileName)
+               .Property(candidate => candidate.PhotoFileName)
                .IsRequired();
 
             modelBuilder.Entity<Application>()

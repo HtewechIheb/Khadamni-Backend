@@ -3,6 +3,7 @@ using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
 using Project_X.Models;
 using Project_X.Services;
+using static Project_X.Shared.GlobalConstants;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -88,6 +89,7 @@ namespace Project_X.Controllers
                 using (MemoryStream resumeFileStream = new MemoryStream(), photoFileStream = new MemoryStream())
                 {
                     await candidateRequest.ResumeFile.CopyToAsync(resumeFileStream);
+                    await candidateRequest.PhotoFile.CopyToAsync(photoFileStream);
 
                     var candidate = new Candidate
                     {
@@ -96,9 +98,9 @@ namespace Project_X.Controllers
                         Address = candidateRequest.Address,
                         Gender = candidateRequest.Gender,
                         ResumeFile = resumeFileStream.ToArray(),
-                        ResumeFileName = candidateRequest.ResumeFile.FileName,
+                        ResumeFileName = GenerateFileName(ResumePrefix, candidateRequest.ResumeFile.FileName),
                         PhotoFile = photoFileStream.ToArray(),
-                        PhotoFileName = candidateRequest.PhotoFile.FileName,
+                        PhotoFileName = GenerateFileName(PhotoPrefix, candidateRequest.PhotoFile.FileName),
                         Birthdate = candidateRequest.Birthdate
                     };
 
@@ -135,74 +137,107 @@ namespace Project_X.Controllers
         }
 
         [HttpGet]
-        [Route("{id:long}/resume")]
+        [Route("{id:long}/{resource}")]
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
-        public async Task<IActionResult> DownloadResume(long id)
+        public async Task<IActionResult> DownloadResource(long id, string resource)
         {
             var candidate = await _candidateService.GetCandidateById(id);
             if(candidate != null)
             {
-                var candidateResume = new MemoryStream(candidate.ResumeFile);
-                return new FileStreamResult(candidateResume, new MediaTypeHeaderValue("application/octet-stream"))
-                {  
-                    FileDownloadName = candidate.ResumeFileName
-                };
-            }
-            else
-            {
-                return NotFound("Candidate With ID {id} Does Not Exist!");
-            }
-        }
-
-        [HttpPut]
-        [Route("{id:long}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
-        [ProducesDefaultResponseType]
-        public async Task<IActionResult> Update([FromBody] UpdateCandidateRequest candidateRequest, [FromRoute] long id)
-        {
-            var candidateToUpdate = await _candidateService.GetCandidateById(id);
-            if (candidateToUpdate != null)
-            {
-                using (MemoryStream resumeFileStream = new MemoryStream(), photoFileStream = new MemoryStream())
+                MemoryStream byteStream;
+                switch (resource)
                 {
-                    await candidateRequest.ResumeFile.CopyToAsync(resumeFileStream);
-
-                    candidateToUpdate.FirstName = candidateRequest.FirstName;
-                    candidateToUpdate.LastName = candidateRequest.LastName;
-                    candidateToUpdate.Address = candidateRequest.Address;
-                    candidateToUpdate.Gender = candidateRequest.Gender;
-                    candidateToUpdate.ResumeFile = resumeFileStream.ToArray();
-                    candidateToUpdate.ResumeFileName = candidateRequest.ResumeFile.FileName;
-                    candidateToUpdate.PhotoFile = photoFileStream.ToArray();
-                    candidateToUpdate.PhotoFileName = candidateRequest.PhotoFile.FileName;
-                    candidateToUpdate.Birthdate = candidateRequest.Birthdate;
-                }
-
-                if (await _candidateService.UpdateCandidate(candidateToUpdate))
-                {
-                    var candidateResponse = new CandidateResponse
-                    {
-                        Id = candidateToUpdate.Id,
-                        FirstName = candidateToUpdate.FirstName,
-                        LastName = candidateToUpdate.LastName,
-                        Address = candidateToUpdate.Address,
-                        Gender = candidateToUpdate.Gender,
-                        Birthdate = candidateToUpdate.Birthdate
-                    };
-
-                    return Ok(candidateResponse);
-                }
-                else
-                {
-                    return BadRequest("Internal Error Occured While Updating Candidate!");
+                    case "resume":
+                        byteStream = new MemoryStream(candidate.ResumeFile);
+                        return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
+                        {
+                            FileDownloadName = candidate.ResumeFileName
+                        };
+                    case "photo":
+                        byteStream = new MemoryStream(candidate.PhotoFile);
+                        return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
+                        {
+                            FileDownloadName = candidate.PhotoFileName
+                        };
+                    default:
+                        return NotFound($"Candidate Resource {resource} Does Not Exist!");
                 }
             }
             else
             {
                 return NotFound($"Candidate With ID {id} Does Not Exist!");
+            }
+        }
+
+        [HttpPut]
+        [Route("{id:long}")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesDefaultResponseType]
+        public async Task<IActionResult> Update([FromForm] UpdateCandidateRequest candidateRequest, [FromRoute] long id)
+        {
+            if (ModelState.IsValid)
+            {
+                var candidateToUpdate = await _candidateService.GetCandidateById(id);
+                if (candidateToUpdate != null)
+                {
+                    using (MemoryStream resumeFileStream = new MemoryStream(), photoFileStream = new MemoryStream())
+                    {
+
+                        candidateToUpdate.FirstName = candidateRequest.FirstName ?? candidateToUpdate.FirstName;
+                        candidateToUpdate.LastName = candidateRequest.LastName ?? candidateToUpdate.LastName;
+                        candidateToUpdate.Address = candidateRequest.Address ?? candidateToUpdate.Address;
+                        candidateToUpdate.Gender = candidateRequest.Gender ?? candidateToUpdate.Gender;
+                        if (candidateRequest.ResumeFile != null)
+                        {
+                            await candidateRequest.ResumeFile.CopyToAsync(resumeFileStream);
+                            candidateToUpdate.ResumeFile = resumeFileStream.ToArray();
+                            candidateToUpdate.ResumeFileName = GenerateFileName(ResumePrefix, candidateRequest.ResumeFile.FileName);
+                        }
+                        if (candidateRequest.PhotoFile != null)
+                        {
+                            await candidateRequest.PhotoFile.CopyToAsync(photoFileStream);
+                            candidateToUpdate.PhotoFile = photoFileStream.ToArray();
+                            candidateToUpdate.PhotoFileName = GenerateFileName(PhotoPrefix, candidateRequest.PhotoFile.FileName);
+                        }
+                        candidateToUpdate.Birthdate = candidateRequest.Birthdate ?? candidateToUpdate.Birthdate;
+                    }
+
+                    if (await _candidateService.UpdateCandidate(candidateToUpdate))
+                    {
+                        var candidateResponse = new CandidateResponse
+                        {
+                            Id = candidateToUpdate.Id,
+                            FirstName = candidateToUpdate.FirstName,
+                            LastName = candidateToUpdate.LastName,
+                            Address = candidateToUpdate.Address,
+                            Gender = candidateToUpdate.Gender,
+                            Birthdate = candidateToUpdate.Birthdate
+                        };
+
+                        return Ok(candidateResponse);
+                    }
+                    else
+                    {
+                        return BadRequest("Internal Error Occured While Updating Candidate!");
+                    }
+                }
+                else
+                {
+                    return NotFound($"Candidate With ID {id} Does Not Exist!");
+                }
+            }
+            else
+            {
+                var errorResponse = new ErrorResponse
+                {
+                    Errors = ModelState.Values.SelectMany(value => value.Errors.Select(error => error.ErrorMessage))
+                };
+
+                return BadRequest(errorResponse);
             }
         }
 
