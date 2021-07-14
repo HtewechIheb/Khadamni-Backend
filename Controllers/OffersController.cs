@@ -16,7 +16,7 @@ using Project_X.Contracts.Enumerations;
 namespace Project_X.Controllers
 {
     [ApiController]
-    [Route("/api/offers")]
+    [Route("/api/offers/")]
     public class OffersController : ControllerBase
     {
         private readonly IOfferService _offerService;
@@ -30,6 +30,8 @@ namespace Project_X.Controllers
 
         [HttpGet]
         [Route("")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesDefaultResponseType]
         public async Task<IActionResult> GetAll()
         {
             var offers = await _offerService.GetOffers();
@@ -56,13 +58,69 @@ namespace Project_X.Controllers
         [HttpGet]
         [Route("{id:long}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Get([FromRoute] long id)
         {
             var offer = await _offerService.GetOfferById(id);
-            if (offer != null)
+            
+            if (offer == null)
             {
+                return NotFound($"Offer With ID {id} Does Not Exist!");
+            }
+            
+            var offerResponse = new OfferResponse
+            {
+                Id = offer.Id,
+                Category = offer.Category,
+                Title = offer.Title,
+                Description = offer.Description,
+                Spots = offer.Spots,
+                Type = offer.Type,
+                ExperienceLowerBound = offer.ExperienceLowerBound,
+                ExperienceUpperBound = offer.ExperienceUpperBound
+            };
+
+            return Ok(offerResponse);
+        }
+
+        [HttpPost]
+        [Route("")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        [ProducesDefaultResponseType]
+        public async Task<IActionResult> Add([FromForm] AddOfferRequest offerRequest)
+        {
+            if (ModelState.IsValid)
+            {
+                var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId);
+                
+                if (associatedCompany == null)
+                {
+                    return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
+                }
+
+                var offer = new Offer
+                {
+                    Category = offerRequest.Category.ToString(),
+                    Title = offerRequest.Title,
+                    Description = offerRequest.Description,
+                    Spots = offerRequest.Spots,
+                    Type = offerRequest.Type.ToString(),
+                    ExperienceLowerBound = offerRequest.ExperienceLowerBound,
+                    ExperienceUpperBound = offerRequest.ExperienceUpperBound,
+                    Company = associatedCompany
+                };
+
+                if (!await _offerService.AddOffer(offer))
+                {
+                    return StatusCode(500, "Internal Error Occured While Adding Offer!");
+                }
+                
+                var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/offers/{offer.Id}";
                 var offerResponse = new OfferResponse
                 {
                     Id = offer.Id,
@@ -75,65 +133,7 @@ namespace Project_X.Controllers
                     ExperienceUpperBound = offer.ExperienceUpperBound
                 };
 
-                return Ok(offerResponse);
-            }
-            else
-            {
-                return BadRequest($"Offer With ID {id} Does Not Exist!");
-            }
-        }
-
-        [HttpPost]
-        [Route("")]
-        [Consumes("multipart/form-data")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-        [ProducesDefaultResponseType]
-        public async Task<IActionResult> Add([FromForm] AddOfferRequest offerRequest)
-        {
-            if (ModelState.IsValid)
-            {
-                var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId);
-                if (associatedCompany != null)
-                {
-                    var offer = new Offer
-                    {
-                        Category = offerRequest.Category.ToString(),
-                        Title = offerRequest.Title,
-                        Description = offerRequest.Description,
-                        Spots = offerRequest.Spots,
-                        Type = offerRequest.Type.ToString(),
-                        ExperienceLowerBound = offerRequest.ExperienceLowerBound,
-                        ExperienceUpperBound = offerRequest.ExperienceUpperBound,
-                        Company = associatedCompany
-                    };
-
-                    if (await _offerService.AddOffer(offer))
-                    {
-                        var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/offers/{offer.Id}";
-                        var offerResponse = new OfferResponse
-                        {
-                            Id = offer.Id,
-                            Category = offer.Category,
-                            Title = offer.Title,
-                            Description = offer.Description,
-                            Spots = offer.Spots,
-                            Type = offer.Type,
-                            ExperienceLowerBound = offer.ExperienceLowerBound,
-                            ExperienceUpperBound = offer.ExperienceUpperBound
-                        };
-
-                        return Created(locationUrl, offerResponse);
-                    }
-                    else
-                    {
-                        return BadRequest("Internal Error Occured While Adding Offer!");
-                    }
-                }
-                else
-                {
-                    return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
-                }
+                return Created(locationUrl, offerResponse);
                 
             }
             else
@@ -151,7 +151,9 @@ namespace Project_X.Controllers
         [Route("{id:long}")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Update([FromForm] UpdateOfferRequest offerRequest, [FromRoute] long id)
         {
@@ -160,46 +162,46 @@ namespace Project_X.Controllers
                 var offerToUpdate = await _offerService.GetOfferById(id);
                 var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId);
 
-                if (offerToUpdate != null)
+                if (offerToUpdate == null)
                 {
-                    using (MemoryStream photoFileStream = new MemoryStream())
-                    {
-                        offerToUpdate.Category = offerRequest.Category.ToString() ?? offerToUpdate.Category;
-                        offerToUpdate.Title = offerRequest.Title ?? offerToUpdate.Title;
-                        offerToUpdate.Description = offerRequest.Description ?? offerToUpdate.Description;
-                        offerToUpdate.Spots = offerRequest.Spots ?? offerToUpdate.Spots;
-                        offerToUpdate.Type = offerRequest.Type.ToString() ?? offerToUpdate.Type;
-                        offerToUpdate.ExperienceLowerBound = offerRequest.ExperienceLowerBound ?? offerToUpdate.ExperienceLowerBound;
-                        offerToUpdate.ExperienceUpperBound = offerRequest.ExperienceUpperBound ?? offerToUpdate.ExperienceUpperBound;
-                        offerToUpdate.Company = associatedCompany ?? offerToUpdate.Company;
-                    }
-
-
-                    if (await _offerService.UpdateOffer(offerToUpdate))
-                    {
-                        var offerResponse = new OfferResponse
-                        {
-                            Id = offerToUpdate.Id,
-                            Category = offerToUpdate.Category,
-                            Title = offerToUpdate.Title,
-                            Description = offerToUpdate.Description,
-                            Spots = offerToUpdate.Spots,
-                            Type = offerToUpdate.Type,
-                            ExperienceLowerBound = offerToUpdate.ExperienceLowerBound,
-                            ExperienceUpperBound = offerToUpdate.ExperienceUpperBound
-                        };
-
-                        return Ok(offerResponse);
-                    }
-                    else
-                    {
-                        return BadRequest("Internal Error Occured While Updating Offer!");
-                    }
+                    return NotFound($"Offer With ID {id} Does Not Exist!");
                 }
-                else
+
+                if(associatedCompany == null)
                 {
-                    return BadRequest($"Offer With ID {id} Does Not Exist!");
+                    return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
                 }
+
+                using (MemoryStream photoFileStream = new MemoryStream())
+                {
+                    offerToUpdate.Category = offerRequest.Category.ToString() ?? offerToUpdate.Category;
+                    offerToUpdate.Title = offerRequest.Title ?? offerToUpdate.Title;
+                    offerToUpdate.Description = offerRequest.Description ?? offerToUpdate.Description;
+                    offerToUpdate.Spots = offerRequest.Spots ?? offerToUpdate.Spots;
+                    offerToUpdate.Type = offerRequest.Type.ToString() ?? offerToUpdate.Type;
+                    offerToUpdate.ExperienceLowerBound = offerRequest.ExperienceLowerBound ?? offerToUpdate.ExperienceLowerBound;
+                    offerToUpdate.ExperienceUpperBound = offerRequest.ExperienceUpperBound ?? offerToUpdate.ExperienceUpperBound;
+                    offerToUpdate.Company = associatedCompany ?? offerToUpdate.Company;
+                }
+
+                if (!await _offerService.UpdateOffer(offerToUpdate))
+                {
+                    return StatusCode(500, "Internal Error Occured While Updating Offer!");
+                }
+
+                var offerResponse = new OfferResponse
+                {
+                    Id = offerToUpdate.Id,
+                    Category = offerToUpdate.Category,
+                    Title = offerToUpdate.Title,
+                    Description = offerToUpdate.Description,
+                    Spots = offerToUpdate.Spots,
+                    Type = offerToUpdate.Type,
+                    ExperienceLowerBound = offerToUpdate.ExperienceLowerBound,
+                    ExperienceUpperBound = offerToUpdate.ExperienceUpperBound
+                };
+
+                return Ok(offerResponse);
             }
             else
             {
@@ -215,26 +217,24 @@ namespace Project_X.Controllers
         [HttpDelete]
         [Route("{id:long}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Delete([FromRoute] long id)
         {
             var offerToDelete = await _offerService.GetOfferById(id);
-            if (offerToDelete != null)
+
+            if (offerToDelete == null)
             {
-                if (await _offerService.DeleteOffer(id))
-                {
-                    return NoContent();
-                }
-                else
-                {
-                    return BadRequest("Internal Error Occured While Deleting Offer!");
-                }
+                return NotFound($"Offer With ID {id} Does Not Exist!");
             }
-            else
+
+            if (!await _offerService.DeleteOffer(id))
             {
-                return BadRequest($"Offer With ID {id} Does Not Exist!");
+                return StatusCode(500, "Internal Error Occured While Deleting Offer!");
             }
+            
+            return NoContent();
         }
     }
 }

@@ -52,9 +52,9 @@ namespace Project_X.Services
             return updated > 0;
         }
 
-        public async Task<bool> DeleteApplication(long id)
+        public async Task<bool> DeleteApplication(long candidateId, long offerId)
         {
-            Application application = await _appDbContext.Applications.FindAsync(id);
+            Application application = await _appDbContext.Applications.FirstOrDefaultAsync(application => application.CandidateId == candidateId && application.OfferId == offerId);
             _appDbContext.Applications.Remove(application);
             int deleted = await _appDbContext.SaveChangesAsync();
             return deleted > 0;

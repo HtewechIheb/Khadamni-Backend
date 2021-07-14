@@ -14,6 +14,6 @@ namespace Project_X.Services
         public Task<Application> GetApplicationByCandidateIdAndOfferId(long candidateId, long offerId);
         public Task<bool> AddApplication(Application application);
         public Task<bool> UpdateApplication(Application application);
-        public Task<bool> DeleteApplication(long id);
+        public Task<bool> DeleteApplication(long candidateId, long offerId);
     }
 }

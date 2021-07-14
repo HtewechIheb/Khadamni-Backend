@@ -16,7 +16,7 @@ using Microsoft.Net.Http.Headers;
 namespace Project_X.Controllers
 {
     [ApiController]
-    [Route("/api/candidates")]
+    [Route("/api/candidates/")]
     public class CandidatesController : ControllerBase
     {
         private readonly ICandidateService _candidateService;
@@ -28,6 +28,8 @@ namespace Project_X.Controllers
 
         [HttpGet]
         [Route("")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesDefaultResponseType]
         public async Task<IActionResult> GetAll()
         {
             var candidates = await _candidateService.GetCandidates();
@@ -52,36 +54,36 @@ namespace Project_X.Controllers
         [HttpGet]
         [Route("{id:long}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Get([FromRoute] long id)
         {
             var candidate = await _candidateService.GetCandidateById(id);
-            if (candidate != null)
+            
+            if (candidate == null)
             {
-                var candidateResponse = new CandidateResponse
-                {
-                    Id = candidate.Id,
-                    FirstName = candidate.FirstName,
-                    LastName = candidate.LastName,
-                    Address = candidate.Address,
-                    Gender = candidate.Gender,
-                    Birthdate = candidate.Birthdate
-                };
+                return NotFound($"Candidate With ID {id} Does Not Exist!");
+            }
+            
+            var candidateResponse = new CandidateResponse
+            {
+                Id = candidate.Id,
+                FirstName = candidate.FirstName,
+                LastName = candidate.LastName,
+                Address = candidate.Address,
+                Gender = candidate.Gender,
+                Birthdate = candidate.Birthdate
+            };
 
-                return Ok(candidateResponse);
-            }
-            else
-            {
-                return BadRequest($"Candidate With ID {id} Does Not Exist!");
-            }
+            return Ok(candidateResponse);
         }
 
         [HttpPost]
         [Route("")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Add([FromForm] AddCandidateRequest candidateRequest)
         {
@@ -105,25 +107,23 @@ namespace Project_X.Controllers
                         Birthdate = candidateRequest.Birthdate
                     };
 
-                    if (await _candidateService.AddCandidate(candidate))
+                    if (!await _candidateService.AddCandidate(candidate))
                     {
-                        var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/candidates/{candidate.Id}";
-                        var candidateResponse = new CandidateResponse
-                        {
-                            Id = candidate.Id,
-                            FirstName = candidate.FirstName,
-                            LastName = candidate.LastName,
-                            Address = candidate.Address,
-                            Gender = candidate.Gender,
-                            Birthdate = candidate.Birthdate
-                        };
+                        return StatusCode(500, "Internal Error Occured While Adding Candidate!");
+                    }
+                    
+                    var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/candidates/{candidate.Id}";
+                    var candidateResponse = new CandidateResponse
+                    {
+                        Id = candidate.Id,
+                        FirstName = candidate.FirstName,
+                        LastName = candidate.LastName,
+                        Address = candidate.Address,
+                        Gender = candidate.Gender,
+                        Birthdate = candidate.Birthdate
+                    };
 
-                        return Created(locationUrl, candidateResponse);
-                    }
-                    else
-                    {
-                        return BadRequest("Internal Error Occured While Adding Candidate!");
-                    }
+                    return Created(locationUrl, candidateResponse);
                 }
             }
             else
@@ -139,35 +139,35 @@ namespace Project_X.Controllers
 
         [HttpGet]
         [Route("{id:long}/{resource}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> DownloadResource(long id, string resource)
         {
             var candidate = await _candidateService.GetCandidateById(id);
-            if(candidate != null)
-            {
-                MemoryStream byteStream;
-                switch (resource)
-                {
-                    case "resume":
-                        byteStream = new MemoryStream(candidate.ResumeFile);
-                        return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
-                        {
-                            FileDownloadName = candidate.ResumeFileName
-                        };
-                    case "photo":
-                        byteStream = new MemoryStream(candidate.PhotoFile);
-                        return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
-                        {
-                            FileDownloadName = candidate.PhotoFileName
-                        };
-                    default:
-                        return NotFound($"Candidate Resource {resource} Does Not Exist!");
-                }
-            }
-            else
+           
+            if (candidate == null)
             {
                 return NotFound($"Candidate With ID {id} Does Not Exist!");
+            }
+            
+            MemoryStream byteStream;
+            switch (resource)
+            {
+                case "resume":
+                    byteStream = new MemoryStream(candidate.ResumeFile);
+                    return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
+                    {
+                        FileDownloadName = candidate.ResumeFileName
+                    };
+                case "photo":
+                    byteStream = new MemoryStream(candidate.PhotoFile);
+                    return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
+                    {
+                        FileDownloadName = candidate.PhotoFileName
+                    };
+                default:
+                    return NotFound($"Candidate Resource {resource} Does Not Exist!");
             }
         }
 
@@ -175,61 +175,58 @@ namespace Project_X.Controllers
         [Route("{id:long}")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Update([FromForm] UpdateCandidateRequest candidateRequest, [FromRoute] long id)
         {
             if (ModelState.IsValid)
             {
                 var candidateToUpdate = await _candidateService.GetCandidateById(id);
-                if (candidateToUpdate != null)
-                {
-                    using (MemoryStream resumeFileStream = new MemoryStream(), photoFileStream = new MemoryStream())
-                    {
 
-                        candidateToUpdate.FirstName = candidateRequest.FirstName ?? candidateToUpdate.FirstName;
-                        candidateToUpdate.LastName = candidateRequest.LastName ?? candidateToUpdate.LastName;
-                        candidateToUpdate.Address = candidateRequest.Address ?? candidateToUpdate.Address;
-                        candidateToUpdate.Gender = candidateRequest.Gender ?? candidateToUpdate.Gender;
-                        if (candidateRequest.ResumeFile != null)
-                        {
-                            await candidateRequest.ResumeFile.CopyToAsync(resumeFileStream);
-                            candidateToUpdate.ResumeFile = resumeFileStream.ToArray();
-                            candidateToUpdate.ResumeFileName = GenerateFileName(ResumePrefix, candidateRequest.ResumeFile.FileName);
-                        }
-                        if (candidateRequest.PhotoFile != null)
-                        {
-                            await candidateRequest.PhotoFile.CopyToAsync(photoFileStream);
-                            candidateToUpdate.PhotoFile = photoFileStream.ToArray();
-                            candidateToUpdate.PhotoFileName = GenerateFileName(PhotoPrefix, candidateRequest.PhotoFile.FileName);
-                        }
-                        candidateToUpdate.Birthdate = candidateRequest.Birthdate ?? candidateToUpdate.Birthdate;
-                    }
-
-                    if (await _candidateService.UpdateCandidate(candidateToUpdate))
-                    {
-                        var candidateResponse = new CandidateResponse
-                        {
-                            Id = candidateToUpdate.Id,
-                            FirstName = candidateToUpdate.FirstName,
-                            LastName = candidateToUpdate.LastName,
-                            Address = candidateToUpdate.Address,
-                            Gender = candidateToUpdate.Gender,
-                            Birthdate = candidateToUpdate.Birthdate
-                        };
-
-                        return Ok(candidateResponse);
-                    }
-                    else
-                    {
-                        return BadRequest("Internal Error Occured While Updating Candidate!");
-                    }
-                }
-                else
+                if (candidateToUpdate == null)
                 {
                     return NotFound($"Candidate With ID {id} Does Not Exist!");
                 }
+                    
+                using (MemoryStream resumeFileStream = new MemoryStream(), photoFileStream = new MemoryStream())
+                {
+                    candidateToUpdate.FirstName = candidateRequest.FirstName ?? candidateToUpdate.FirstName;
+                    candidateToUpdate.LastName = candidateRequest.LastName ?? candidateToUpdate.LastName;
+                    candidateToUpdate.Address = candidateRequest.Address ?? candidateToUpdate.Address;
+                    candidateToUpdate.Gender = candidateRequest.Gender ?? candidateToUpdate.Gender;
+                    if (candidateRequest.ResumeFile != null)
+                    {
+                        await candidateRequest.ResumeFile.CopyToAsync(resumeFileStream);
+                        candidateToUpdate.ResumeFile = resumeFileStream.ToArray();
+                        candidateToUpdate.ResumeFileName = GenerateFileName(ResumePrefix, candidateRequest.ResumeFile.FileName);
+                    }
+                    if (candidateRequest.PhotoFile != null)
+                    {
+                        await candidateRequest.PhotoFile.CopyToAsync(photoFileStream);
+                        candidateToUpdate.PhotoFile = photoFileStream.ToArray();
+                        candidateToUpdate.PhotoFileName = GenerateFileName(PhotoPrefix, candidateRequest.PhotoFile.FileName);
+                    }
+                    candidateToUpdate.Birthdate = candidateRequest.Birthdate ?? candidateToUpdate.Birthdate;
+                }
+
+                if (!await _candidateService.UpdateCandidate(candidateToUpdate))
+                {
+                    return StatusCode(500, "Internal Error Occured While Updating Candidate!");
+                }
+                    
+                var candidateResponse = new CandidateResponse
+                {
+                    Id = candidateToUpdate.Id,
+                    FirstName = candidateToUpdate.FirstName,
+                    LastName = candidateToUpdate.LastName,
+                    Address = candidateToUpdate.Address,
+                    Gender = candidateToUpdate.Gender,
+                    Birthdate = candidateToUpdate.Birthdate
+                };
+
+                return Ok(candidateResponse);
             }
             else
             {
@@ -245,26 +242,24 @@ namespace Project_X.Controllers
         [HttpDelete]
         [Route("{id:long}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Delete([FromRoute] long id)
         {
             var candidateToDelete = await _candidateService.GetCandidateById(id);
-            if (candidateToDelete != null)
+            
+            if (candidateToDelete == null)
             {
-                if (await _candidateService.DeleteCandidate(id))
-                {
-                    return NoContent();
-                }
-                else
-                {
-                    return BadRequest("Internal Error Occured While Deleting Candidate!");
-                }
+                return NotFound($"Candidate With ID {id} Does Not Exist!");
             }
-            else
+
+            if (await _candidateService.DeleteCandidate(id))
             {
-                return BadRequest($"Candidate With ID {id} Does Not Exist!");
+                return StatusCode(500, "Internal Error Occured While Deleting Candidate!");
             }
+
+            return NoContent();
         }
     }
 }
