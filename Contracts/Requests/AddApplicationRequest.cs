@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Project_X.Contracts.Enumerations;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace Project_X.Contracts.Requests
         [Required]
         public DateTime Date { get; set; }
         [Required]
-        public string Status { get; set; }
+        public ApplicationStatus Status { get; set; }
         [Required]
         public long CandidateId { get; set; }
         [Required]

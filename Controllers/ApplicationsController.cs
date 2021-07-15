@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace Project_X.Controllers
 {
     [ApiController]
-    [Route("/api/applications/")]
+    [Route("/api")]
     public class ApplicationsController : ControllerBase
     {
         private readonly IApplicationService _applicationService;
@@ -28,7 +28,7 @@ namespace Project_X.Controllers
         }
 
         [HttpGet]
-        [Route("")]
+        [Route("applications")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesDefaultResponseType]
         public async Task<IActionResult> GetAll()
@@ -52,10 +52,10 @@ namespace Project_X.Controllers
         }
 
         [HttpGet]
-        [Route(";candidate={candidateId:long};offer={offerId:long}")]
-        [Route(";offer={offerId:long};candidate={candidateId:long}")]
-        [Route(";offer={offerId:long}")]
-        [Route(";candidate={candidateId:long}")]
+        [Route("applications;candidate={candidateId:long};offer={offerId:long}")]
+        [Route("applications;offer={offerId:long};candidate={candidateId:long}")]
+        [Route("applications;offer={offerId:long}")]
+        [Route("applications;candidate={candidateId:long}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesDefaultResponseType]
@@ -139,7 +139,7 @@ namespace Project_X.Controllers
         }
 
         [HttpPost]
-        [Route("")]
+        [Route("applications")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -166,7 +166,7 @@ namespace Project_X.Controllers
                 var application = new Application
                 {
                     Date = applicationRequest.Date,
-                    Status = applicationRequest.Status,
+                    Status = applicationRequest.Status.ToString(),
                     Candidate = associatedCandidate,
                     Offer = associatedOffer
                 };
@@ -199,8 +199,8 @@ namespace Project_X.Controllers
         }
 
         [HttpPut]
-        [Route(";candidate={candidateId:long};offer={offerId:long}")]
-        [Route(";offer={offerId:long};candidate={candidateId:long}")]
+        [Route("applications;candidate={candidateId:long};offer={offerId:long}")]
+        [Route("applications;offer={offerId:long};candidate={candidateId:long}")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -212,18 +212,6 @@ namespace Project_X.Controllers
             if (ModelState.IsValid)
             {
                 var applicationToUpdate = await _applicationService.GetApplicationByCandidateIdAndOfferId(candidateId, offerId);
-                var associatedCandidate = await _candidateService.GetCandidateById(applicationRequest.CandidateId);
-                var associatedOffer = await _offerService.GetOfferById(applicationRequest.OfferId);
-
-                if(associatedCandidate == null)
-                {
-                    return NotFound($"Candidate With Id {candidateId} Does Not Exist!");
-                }
-
-                if(associatedOffer == null)
-                {
-                    return NotFound($"Offer With Id {offerId} Does Not Exist!");
-                }
 
                 if (applicationToUpdate == null)
                 {
@@ -231,8 +219,32 @@ namespace Project_X.Controllers
 
                 }
 
+                if (applicationRequest.CandidateId.HasValue)
+                {
+                    var associatedCandidate = await _candidateService.GetCandidateById(applicationRequest.CandidateId.Value);
+
+                    if (associatedCandidate == null)
+                    {
+                        return NotFound($"Candidate With Id {candidateId} Does Not Exist!");
+                    }
+
+                    applicationToUpdate.Candidate = associatedCandidate;
+                }
+
+                if (applicationRequest.OfferId.HasValue)
+                {
+                    var associatedOffer = await _offerService.GetOfferById(applicationRequest.OfferId.Value);
+
+                    if (associatedOffer == null)
+                    {
+                        return NotFound($"Offer With Id {offerId} Does Not Exist!");
+                    }
+
+                    applicationToUpdate.Offer = associatedOffer;
+                }
+
                 applicationToUpdate.Date = applicationRequest.Date ?? applicationToUpdate.Date;
-                applicationToUpdate.Status = applicationRequest.Status ?? applicationToUpdate.Status;
+                applicationToUpdate.Status = applicationRequest.Status.ToString() ?? applicationToUpdate.Status;
 
                 if (!await _applicationService.UpdateApplication(applicationToUpdate))
                 {
@@ -261,8 +273,8 @@ namespace Project_X.Controllers
         }
 
         [HttpDelete]
-        [Route(";candidate={candidateId:long};offer={offerId:long}")]
-        [Route(";offer={offerId:long};candidate={candidateId:long}")]
+        [Route("applications;candidate={candidateId:long};offer={offerId:long}")]
+        [Route("applications;offer={offerId:long};candidate={candidateId:long}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]

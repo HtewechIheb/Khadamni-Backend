@@ -16,6 +16,6 @@ namespace Project_X.Contracts.Requests
         public OfferType Type { get; set; }
         public string ExperienceLowerBound { get; set; }
         public string ExperienceUpperBound { get; set; }
-        public long CompanyId { get; set; }
+        public long? CompanyId { get; set; }
     }
 }

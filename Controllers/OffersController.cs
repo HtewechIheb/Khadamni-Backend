@@ -160,29 +160,31 @@ namespace Project_X.Controllers
             if (ModelState.IsValid)
             {
                 var offerToUpdate = await _offerService.GetOfferById(id);
-                var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId);
 
                 if (offerToUpdate == null)
                 {
                     return NotFound($"Offer With ID {id} Does Not Exist!");
                 }
 
-                if(associatedCompany == null)
+                if (offerRequest.CompanyId.HasValue)
                 {
-                    return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
+                    var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId.Value);
+
+                    offerToUpdate.Company = associatedCompany;
+
+                    if (associatedCompany == null)
+                    {
+                        return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
+                    }
                 }
 
-                using (MemoryStream photoFileStream = new MemoryStream())
-                {
-                    offerToUpdate.Category = offerRequest.Category.ToString() ?? offerToUpdate.Category;
-                    offerToUpdate.Title = offerRequest.Title ?? offerToUpdate.Title;
-                    offerToUpdate.Description = offerRequest.Description ?? offerToUpdate.Description;
-                    offerToUpdate.Spots = offerRequest.Spots ?? offerToUpdate.Spots;
-                    offerToUpdate.Type = offerRequest.Type.ToString() ?? offerToUpdate.Type;
-                    offerToUpdate.ExperienceLowerBound = offerRequest.ExperienceLowerBound ?? offerToUpdate.ExperienceLowerBound;
-                    offerToUpdate.ExperienceUpperBound = offerRequest.ExperienceUpperBound ?? offerToUpdate.ExperienceUpperBound;
-                    offerToUpdate.Company = associatedCompany ?? offerToUpdate.Company;
-                }
+                offerToUpdate.Category = offerRequest.Category.ToString() ?? offerToUpdate.Category;
+                offerToUpdate.Title = offerRequest.Title ?? offerToUpdate.Title;
+                offerToUpdate.Description = offerRequest.Description ?? offerToUpdate.Description;
+                offerToUpdate.Spots = offerRequest.Spots ?? offerToUpdate.Spots;
+                offerToUpdate.Type = offerRequest.Type.ToString() ?? offerToUpdate.Type;
+                offerToUpdate.ExperienceLowerBound = offerRequest.ExperienceLowerBound ?? offerToUpdate.ExperienceLowerBound;
+                offerToUpdate.ExperienceUpperBound = offerRequest.ExperienceUpperBound ?? offerToUpdate.ExperienceUpperBound;
 
                 if (!await _offerService.UpdateOffer(offerToUpdate))
                 {
