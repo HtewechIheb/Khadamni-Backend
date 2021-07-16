@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Project_X.Models;
 using System;
 using System.Collections.Generic;
@@ -7,12 +9,13 @@ using System.Threading.Tasks;
 
 namespace Project_X.Database
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext
     {
-        public DbSet<Company> Companies { get; set; }
-        public DbSet<Offer> Offers { get; set; }
-        public DbSet<Candidate> Candidates { get; set; }
-        public DbSet<Application> Applications { get; set; }
+        public virtual DbSet<Company> Companies { get; set; }
+        public virtual DbSet<Offer> Offers { get; set; }
+        public virtual DbSet<Candidate> Candidates { get; set; }
+        public virtual DbSet<Application> Applications { get; set; }
+        public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -89,6 +92,15 @@ namespace Project_X.Database
                 .HasOne<Offer>(application => application.Offer)
                 .WithMany(application => application.Applications)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RefreshToken>()
+                .HasKey(refreshToken => refreshToken.Token);
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne<IdentityUser>(refreshToken => refreshToken.User)
+                .WithMany()
+                .HasForeignKey(refreshToken => refreshToken.UserId);
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }
