@@ -1,6 +1,4 @@
-﻿using Project_X.Contracts.Enumerations;
-using Project_X.Shared;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;

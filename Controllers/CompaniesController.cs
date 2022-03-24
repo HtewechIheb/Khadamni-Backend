@@ -34,7 +34,7 @@ namespace Project_X.Controllers
         public async Task<IActionResult> GetAll()
         {
             var companies = await _companyService.GetCompanies();
-            var companyResponses = new List<CompanyResponse>();
+            var companiesResponse = new List<CompanyResponse>();
             foreach(var company in companies)
             {
                 var companyResponse = new CompanyResponse
@@ -45,9 +45,9 @@ namespace Project_X.Controllers
                     Description = company.Description
                 };
 
-                companyResponses.Add(companyResponse);
+                companiesResponse.Add(companyResponse);
             }
-            return Ok(companyResponses);
+            return Ok(companiesResponse);
         }
 
         [HttpGet]
@@ -84,39 +84,7 @@ namespace Project_X.Controllers
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Add([FromForm] AddCompanyRequest companyRequest)
         {
-            if (ModelState.IsValid)
-            {
-                using(MemoryStream photoFileStream = new MemoryStream())
-                {
-                    await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
-
-                    var company = new Company
-                    {
-                        Name = companyRequest.Name,
-                        Address = companyRequest.Address,
-                        Description = companyRequest.Description,
-                        PhotoFile = photoFileStream.ToArray(),
-                        PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName)
-                    };
-
-                    if (!await _companyService.AddCompany(company))
-                    {
-                        return StatusCode(500, "Internal Error Occured While Adding Company!");
-                    }
-                    
-                    var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/companies/{company.Id}";
-                    var companyResponse = new CompanyResponse
-                    {
-                        Id = company.Id,
-                        Name = company.Name,
-                        Address = company.Address,
-                        Description = company.Description
-                    };
-
-                    return Created(locationUrl, companyResponse);
-                }
-            }
-            else
+            if (!ModelState.IsValid)
             {
                 var errorResponse = new ErrorResponse
                 {
@@ -125,6 +93,34 @@ namespace Project_X.Controllers
 
                 return BadRequest(errorResponse);
             }
+
+            using MemoryStream photoFileStream = new MemoryStream();
+            await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
+
+            var company = new Company
+            {
+                Name = companyRequest.Name,
+                Address = companyRequest.Address,
+                Description = companyRequest.Description,
+                PhotoFile = photoFileStream.ToArray(),
+                PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName)
+            };
+
+            if (!await _companyService.AddCompany(company))
+            {
+                return StatusCode(500, "Internal Error Occured While Adding Company!");
+            }
+
+            var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/companies/{company.Id}";
+            var companyResponse = new CompanyResponse
+            {
+                Id = company.Id,
+                Name = company.Name,
+                Address = company.Address,
+                Description = company.Description
+            };
+
+            return Created(locationUrl, companyResponse);
         }
 
         [HttpGet]
@@ -158,44 +154,7 @@ namespace Project_X.Controllers
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Update([FromForm] UpdateCompanyRequest companyRequest, [FromRoute] long id)
         {
-            if (ModelState.IsValid)
-            {
-                var companyToUpdate = await _companyService.GetCompanyById(id);
-                
-                if (companyToUpdate == null)
-                {
-                    return NotFound($"Company With ID {id} Does Not Exist!");
-                }
-                
-                using (MemoryStream photoFileStream = new MemoryStream())
-                {
-                    companyToUpdate.Name = companyRequest.Name ?? companyToUpdate.Name;
-                    companyToUpdate.Address = companyRequest.Address ?? companyToUpdate.Address;
-                    companyToUpdate.Description = companyRequest.Description ?? companyToUpdate.Description;
-                    if (companyRequest.PhotoFile != null)
-                    {
-                        await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
-                        companyToUpdate.PhotoFile = photoFileStream.ToArray();
-                        companyToUpdate.PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName);
-                    }
-                }
-
-                if (!await _companyService.UpdateCompany(companyToUpdate))
-                {
-                    return StatusCode(500, "Internal Error Occured While Updating Company!");
-                }
-                
-                var companyResponse = new CompanyResponse
-                {
-                    Id = companyToUpdate.Id,
-                    Name = companyToUpdate.Name,
-                    Address = companyToUpdate.Address,
-                    Description = companyToUpdate.Description
-                };
-
-                return Ok(companyResponse);
-            }
-            else
+            if (!ModelState.IsValid)
             {
                 var errorResponse = new ErrorResponse
                 {
@@ -204,6 +163,40 @@ namespace Project_X.Controllers
 
                 return BadRequest(errorResponse);
             }
+            var companyToUpdate = await _companyService.GetCompanyById(id);
+                
+            if (companyToUpdate == null)
+            {
+                return NotFound($"Company With ID {id} Does Not Exist!");
+            }
+                
+            using (MemoryStream photoFileStream = new MemoryStream())
+            {
+                companyToUpdate.Name = companyRequest.Name ?? companyToUpdate.Name;
+                companyToUpdate.Address = companyRequest.Address ?? companyToUpdate.Address;
+                companyToUpdate.Description = companyRequest.Description ?? companyToUpdate.Description;
+                if (companyRequest.PhotoFile != null)
+                {
+                    await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
+                    companyToUpdate.PhotoFile = photoFileStream.ToArray();
+                    companyToUpdate.PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName);
+                }
+            }
+
+            if (!await _companyService.UpdateCompany(companyToUpdate))
+            {
+                return StatusCode(500, "Internal Error Occured While Updating Company!");
+            }
+                
+            var companyResponse = new CompanyResponse
+            {
+                Id = companyToUpdate.Id,
+                Name = companyToUpdate.Name,
+                Address = companyToUpdate.Address,
+                Description = companyToUpdate.Description
+            };
+
+            return Ok(companyResponse);
         }
 
         [HttpDelete]

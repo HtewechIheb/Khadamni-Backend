@@ -20,14 +20,14 @@ namespace Project_X.Attributes
 
         protected override ValidationResult IsValid(object value, ValidationContext validationContext)
         {
-            var file = value as IFormFile;
-            if(file != null &&
-                (!_extensions.Contains(file.ContentType.Split("/")[1]) ||
-                 !_extensions.Contains(Path.GetExtension(file.FileName).Substring(1))))
+            if (value is IFormFile file &&
+                _extensions.Contains(file.ContentType.Split("/")[1]) &&
+                _extensions.Contains(Path.GetExtension(file.FileName)[1..]))
             {
-                return new ValidationResult($"Accepted File Types: {string.Join(", ", _extensions)}!");
+                return ValidationResult.Success;
             }
-            return ValidationResult.Success;
+
+            return new ValidationResult($"Accepted File Types: {string.Join(", ", _extensions)}!");
         }
     }
 }

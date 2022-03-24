@@ -10,7 +10,7 @@ namespace Project_X.Shared
     {
         public static string GenerateFileName(string prefix, string fileName)
         {
-            return $"{prefix}_{Guid.NewGuid().ToString()}{Path.GetExtension(fileName)}";
+            return $"{prefix}_{Guid.NewGuid()}{Path.GetExtension(fileName)}";
         }
     }
 }

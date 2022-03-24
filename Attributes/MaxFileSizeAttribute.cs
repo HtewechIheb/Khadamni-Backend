@@ -18,8 +18,7 @@ namespace Project_X.Attributes
 
         protected override ValidationResult IsValid(object value, ValidationContext validationContext)
         {
-            var file = value as IFormFile;
-            if(file != null && file.Length > _maxFileSize)
+            if (value is IFormFile file && file.Length > _maxFileSize)
             {
                 return new ValidationResult(string.Format("Maximum File Size Is {0:F2} MB!", _maxFileSize / 1024 / 1024));
             }

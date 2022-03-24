@@ -34,7 +34,7 @@ namespace Project_X.Controllers
         public async Task<IActionResult> GetAll()
         {
             var applications = await _applicationService.GetApplications();
-            var applicationResponses = new List<ApplicationResponse>();
+            var applicationsResponse = new List<ApplicationResponse>();
 
             foreach (var application in applications)
             {
@@ -46,9 +46,9 @@ namespace Project_X.Controllers
                     OfferId = application.OfferId
                 };
 
-                applicationResponses.Add(applicationResponse);
+                applicationsResponse.Add(applicationResponse);
             }
-            return Ok(applicationResponses);
+            return Ok(applicationsResponse);
         }
 
         [HttpGet]
@@ -83,7 +83,7 @@ namespace Project_X.Controllers
 
                 if(application == null)
                 {
-                    return NotFound($"Candidate With Id {candidateId.Value} And Offer With Id {offerId.Value} Do Not Exist!");
+                    return NotFound($"Application With Candidate Id {candidateId.Value} And Offer Id {offerId.Value} Does Not Exist!");
                 }
 
                 var applicationResponse = new ApplicationResponse
@@ -98,7 +98,7 @@ namespace Project_X.Controllers
             }
 
             IEnumerable<Application> applications = new List<Application>();
-            var applicationResponses = new List<ApplicationResponse>();
+            var applicationsResponse = new List<ApplicationResponse>();
 
             if (candidateId.HasValue)
             {
@@ -133,9 +133,9 @@ namespace Project_X.Controllers
                     OfferId = application.OfferId
                 };
 
-                applicationResponses.Add(applicationResponse);
+                applicationsResponse.Add(applicationResponse);
             }
-            return Ok(applicationResponses);
+            return Ok(applicationsResponse);
         }
 
         [HttpPost]
@@ -148,46 +148,7 @@ namespace Project_X.Controllers
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Add([FromForm] AddApplicationRequest applicationRequest)
         {
-            if (ModelState.IsValid)
-            {
-                var associatedCandidate = await _candidateService.GetCandidateById(applicationRequest.CandidateId);
-                var associatedOffer = await _offerService.GetOfferById(applicationRequest.OfferId);
-
-                if (associatedCandidate == null)
-                {
-                    return NotFound($"Candidate With Id {applicationRequest.CandidateId} Does Not Exist!");
-                }
-
-                if (associatedOffer == null)
-                {
-                    return NotFound($"Offer With Id {applicationRequest.OfferId} Does Not Exist!");
-                }
-
-                var application = new Application
-                {
-                    Date = applicationRequest.Date,
-                    Status = applicationRequest.Status.ToString(),
-                    Candidate = associatedCandidate,
-                    Offer = associatedOffer
-                };
-
-                if (!await _applicationService.AddApplication(application))
-                {
-                    return StatusCode(500, "Internal Error Occured While Adding Application!");
-                }
-
-                var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/applications;candidate={application.CandidateId};offer={application.OfferId}";
-                var applicationResponse = new ApplicationResponse
-                {
-                    Date = application.Date,
-                    Status = application.Status,
-                    CandidateId = application.CandidateId,
-                    OfferId = application.OfferId
-                };
-
-                return Created(locationUrl, applicationResponse);
-            }
-            else
+            if (!ModelState.IsValid)
             {
                 var errorResponse = new ErrorResponse
                 {
@@ -196,6 +157,43 @@ namespace Project_X.Controllers
 
                 return BadRequest(errorResponse);
             }
+
+            var associatedCandidate = await _candidateService.GetCandidateById(applicationRequest.CandidateId);
+            var associatedOffer = await _offerService.GetOfferById(applicationRequest.OfferId);
+
+            if (associatedCandidate == null)
+            {
+                return NotFound($"Candidate With Id {applicationRequest.CandidateId} Does Not Exist!");
+            }
+
+            if (associatedOffer == null)
+            {
+                return NotFound($"Offer With Id {applicationRequest.OfferId} Does Not Exist!");
+            }
+
+            var application = new Application
+            {
+                Date = applicationRequest.Date,
+                Status = applicationRequest.Status.ToString(),
+                Candidate = associatedCandidate,
+                Offer = associatedOffer
+            };
+
+            if (!await _applicationService.AddApplication(application))
+            {
+                return StatusCode(500, "Internal Error Occured While Adding Application!");
+            }
+
+            var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/applications;candidate={application.CandidateId};offer={application.OfferId}";
+            var applicationResponse = new ApplicationResponse
+            {
+                Date = application.Date,
+                Status = application.Status,
+                CandidateId = application.CandidateId,
+                OfferId = application.OfferId
+            };
+
+            return Created(locationUrl, applicationResponse);
         }
 
         [HttpPut]
@@ -211,58 +209,6 @@ namespace Project_X.Controllers
         {
             if (ModelState.IsValid)
             {
-                var applicationToUpdate = await _applicationService.GetApplicationByCandidateIdAndOfferId(candidateId, offerId);
-
-                if (applicationToUpdate == null)
-                {
-                    return NotFound($"Application With Candidate Id {candidateId} And Offer Id {offerId} Does Not Exist!");
-
-                }
-
-                if (applicationRequest.CandidateId.HasValue)
-                {
-                    var associatedCandidate = await _candidateService.GetCandidateById(applicationRequest.CandidateId.Value);
-
-                    if (associatedCandidate == null)
-                    {
-                        return NotFound($"Candidate With Id {candidateId} Does Not Exist!");
-                    }
-
-                    applicationToUpdate.Candidate = associatedCandidate;
-                }
-
-                if (applicationRequest.OfferId.HasValue)
-                {
-                    var associatedOffer = await _offerService.GetOfferById(applicationRequest.OfferId.Value);
-
-                    if (associatedOffer == null)
-                    {
-                        return NotFound($"Offer With Id {offerId} Does Not Exist!");
-                    }
-
-                    applicationToUpdate.Offer = associatedOffer;
-                }
-
-                applicationToUpdate.Date = applicationRequest.Date ?? applicationToUpdate.Date;
-                applicationToUpdate.Status = applicationRequest.Status.ToString() ?? applicationToUpdate.Status;
-
-                if (!await _applicationService.UpdateApplication(applicationToUpdate))
-                {
-                    return StatusCode(500, "Internal Error Occured While Updating Application!");
-                }
-
-                var applicationResponse = new ApplicationResponse
-                {
-                    Date = applicationToUpdate.Date,
-                    Status = applicationToUpdate.Status,
-                    CandidateId = applicationToUpdate.CandidateId,
-                    OfferId = applicationToUpdate.OfferId
-                };
-
-                return Ok(applicationResponse);
-            }
-            else
-            {
                 var errorResponse = new ErrorResponse
                 {
                     Errors = ModelState.Values.SelectMany(value => value.Errors.Select(error => error.ErrorMessage))
@@ -270,6 +216,56 @@ namespace Project_X.Controllers
 
                 return BadRequest(errorResponse);
             }
+
+            var applicationToUpdate = await _applicationService.GetApplicationByCandidateIdAndOfferId(candidateId, offerId);
+
+            if (applicationToUpdate == null)
+            {
+                return NotFound($"Application With Candidate Id {candidateId} And Offer Id {offerId} Does Not Exist!");
+
+            }
+
+            if (applicationRequest.CandidateId.HasValue)
+            {
+                var associatedCandidate = await _candidateService.GetCandidateById(applicationRequest.CandidateId.Value);
+
+                if (associatedCandidate == null)
+                {
+                    return NotFound($"Candidate With Id {candidateId} Does Not Exist!");
+                }
+
+                applicationToUpdate.Candidate = associatedCandidate;
+            }
+
+            if (applicationRequest.OfferId.HasValue)
+            {
+                var associatedOffer = await _offerService.GetOfferById(applicationRequest.OfferId.Value);
+
+                if (associatedOffer == null)
+                {
+                    return NotFound($"Offer With Id {offerId} Does Not Exist!");
+                }
+
+                applicationToUpdate.Offer = associatedOffer;
+            }
+
+            applicationToUpdate.Date = applicationRequest.Date ?? applicationToUpdate.Date;
+            applicationToUpdate.Status = applicationRequest.Status.ToString() ?? applicationToUpdate.Status;
+
+            if (!await _applicationService.UpdateApplication(applicationToUpdate))
+            {
+                return StatusCode(500, "Internal Error Occured While Updating Application!");
+            }
+
+            var applicationResponse = new ApplicationResponse
+            {
+                Date = applicationToUpdate.Date,
+                Status = applicationToUpdate.Status,
+                CandidateId = applicationToUpdate.CandidateId,
+                OfferId = applicationToUpdate.OfferId
+            };
+
+            return Ok(applicationResponse);
         }
 
         [HttpDelete]
