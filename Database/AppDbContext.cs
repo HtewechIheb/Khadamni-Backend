@@ -30,10 +30,13 @@ namespace Project_X.Database
                 .Property(company => company.Address)
                 .IsRequired();
             modelBuilder.Entity<Company>()
-               .Property(company => company.PhotoFile)
+                .Property(company => company.Description)
+                .IsRequired();
+            modelBuilder.Entity<Company>()
+               .Property(company => company.LogoFile)
                .IsRequired();
             modelBuilder.Entity<Company>()
-               .Property(company => company.PhotoFileName)
+               .Property(company => company.LogoFileName)
                .IsRequired();
 
             modelBuilder.Entity<Offer>()

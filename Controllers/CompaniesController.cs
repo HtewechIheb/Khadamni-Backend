@@ -42,7 +42,9 @@ namespace Project_X.Controllers
                     Id = company.Id,
                     Name = company.Name,
                     Address = company.Address,
-                    Description = company.Description
+                    Description = company.Description,
+                    ContactNumber = company.ContactNumber,
+                    Category = company.Category
                 };
 
                 companiesResponse.Add(companyResponse);
@@ -69,7 +71,9 @@ namespace Project_X.Controllers
                 Id = company.Id,
                 Name = company.Name,
                 Address = company.Address,
-                Description = company.Description
+                Description = company.Description,
+                ContactNumber = company.ContactNumber,
+                Category = company.Category
             };
 
             return Ok(companyResponse);
@@ -95,15 +99,17 @@ namespace Project_X.Controllers
             }
 
             using MemoryStream photoFileStream = new MemoryStream();
-            await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
+            await companyRequest.LogoFile.CopyToAsync(photoFileStream);
 
             var company = new Company
             {
                 Name = companyRequest.Name,
                 Address = companyRequest.Address,
                 Description = companyRequest.Description,
-                PhotoFile = photoFileStream.ToArray(),
-                PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName)
+                ContactNumber = companyRequest.ContactNumber,
+                Category = companyRequest.Category,
+                LogoFile = photoFileStream.ToArray(),
+                LogoFileName = GenerateFileName(ResumePrefix, companyRequest.LogoFile.FileName)
             };
 
             if (!await _companyService.AddCompany(company))
@@ -117,7 +123,9 @@ namespace Project_X.Controllers
                 Id = company.Id,
                 Name = company.Name,
                 Address = company.Address,
-                Description = company.Description
+                Description = company.Description,
+                ContactNumber = company.ContactNumber,
+                Category = company.Category
             };
 
             return Created(locationUrl, companyResponse);
@@ -137,10 +145,10 @@ namespace Project_X.Controllers
                 return NotFound($"Company With ID {id} Does Not Exist!");
             }
                 
-            var byteStream = new MemoryStream(company.PhotoFile);
+            var byteStream = new MemoryStream(company.LogoFile);
             return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
             {
-                FileDownloadName = company.PhotoFileName
+                FileDownloadName = company.LogoFileName
             };
         }
 
@@ -175,11 +183,13 @@ namespace Project_X.Controllers
                 companyToUpdate.Name = companyRequest.Name ?? companyToUpdate.Name;
                 companyToUpdate.Address = companyRequest.Address ?? companyToUpdate.Address;
                 companyToUpdate.Description = companyRequest.Description ?? companyToUpdate.Description;
-                if (companyRequest.PhotoFile != null)
+                companyToUpdate.ContactNumber = companyRequest.ContactNumber ?? companyToUpdate.ContactNumber;
+                companyToUpdate.Category = companyRequest.Category ?? companyToUpdate.Category;
+                if (companyRequest.LogoFile != null)
                 {
-                    await companyRequest.PhotoFile.CopyToAsync(photoFileStream);
-                    companyToUpdate.PhotoFile = photoFileStream.ToArray();
-                    companyToUpdate.PhotoFileName = GenerateFileName(ResumePrefix, companyRequest.PhotoFile.FileName);
+                    await companyRequest.LogoFile.CopyToAsync(photoFileStream);
+                    companyToUpdate.LogoFile = photoFileStream.ToArray();
+                    companyToUpdate.LogoFileName = GenerateFileName(ResumePrefix, companyRequest.LogoFile.FileName);
                 }
             }
 
@@ -193,7 +203,9 @@ namespace Project_X.Controllers
                 Id = companyToUpdate.Id,
                 Name = companyToUpdate.Name,
                 Address = companyToUpdate.Address,
-                Description = companyToUpdate.Description
+                Description = companyToUpdate.Description,
+                ContactNumber = companyToUpdate.ContactNumber,
+                Category = companyToUpdate.Category
             };
 
             return Ok(companyResponse);
