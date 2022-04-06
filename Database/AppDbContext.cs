@@ -33,11 +33,18 @@ namespace Project_X.Database
                 .Property(company => company.Description)
                 .IsRequired();
             modelBuilder.Entity<Company>()
-               .Property(company => company.LogoFile)
-               .IsRequired();
+                .Property(company => company.LogoFile)
+                .IsRequired();
             modelBuilder.Entity<Company>()
-               .Property(company => company.LogoFileName)
-               .IsRequired();
+                .Property(company => company.LogoFileName)
+                .IsRequired();
+            modelBuilder.Entity<Company>()
+                .HasOne<IdentityUser>(company => company.Account)
+                .WithOne()
+                .HasForeignKey<Company>(company => company.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // TODO: Make AccountId required
+
 
             modelBuilder.Entity<Offer>()
                 .HasKey(offer => offer.Id);
@@ -56,7 +63,8 @@ namespace Project_X.Database
             modelBuilder.Entity<Offer>()
                 .HasOne<Company>(offer => offer.Company)
                 .WithMany(company => company.Offers)
-                .OnDelete(DeleteBehavior.Cascade);
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Candidate>()
                 .HasKey(candidate => candidate.Id);
@@ -64,20 +72,29 @@ namespace Project_X.Database
                 .Property(candidate => candidate.FirstName)
                 .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(candidate => candidate.LastName)
-               .IsRequired();
+                .Property(candidate => candidate.LastName)
+                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(candidate => candidate.ResumeFile)
-               .IsRequired();
+                .Property(candidate => candidate.Gender)
+                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(candidate => candidate.ResumeFileName)
-               .IsRequired();
+                .Property(candidate => candidate.ResumeFile)
+                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(candidate => candidate.PhotoFile)
-               .IsRequired();
+                .Property(candidate => candidate.ResumeFileName)
+                .IsRequired();
             modelBuilder.Entity<Candidate>()
-               .Property(candidate => candidate.PhotoFileName)
-               .IsRequired();
+                .Property(candidate => candidate.PhotoFile)
+                .IsRequired();
+            modelBuilder.Entity<Candidate>()
+                .Property(candidate => candidate.PhotoFileName)
+                .IsRequired();
+            modelBuilder.Entity<Candidate>()
+                .HasOne<IdentityUser>(candidate => candidate.Account)
+                .WithOne()
+                .HasForeignKey<Candidate>(candidate => candidate.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // TODO: Make AccountId required
 
             modelBuilder.Entity<Application>()
                 .HasKey(application => new { application.CandidateId, application.OfferId });
@@ -85,23 +102,24 @@ namespace Project_X.Database
                 .Property(application => application.Date)
                 .IsRequired();
             modelBuilder.Entity<Application>()
-               .Property(application => application.Status)
-               .IsRequired();
+                .Property(application => application.Status)
+                .IsRequired();
             modelBuilder.Entity<Application>()
                 .HasOne<Candidate>(application => application.Candidate)
                 .WithMany(candidate => candidate.Applications)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Application>()
                 .HasOne<Offer>(application => application.Offer)
                 .WithMany(application => application.Applications)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<RefreshToken>()
                 .HasKey(refreshToken => refreshToken.Token);
             modelBuilder.Entity<RefreshToken>()
                 .HasOne<IdentityUser>(refreshToken => refreshToken.User)
                 .WithMany()
-                .HasForeignKey(refreshToken => refreshToken.UserId);
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }

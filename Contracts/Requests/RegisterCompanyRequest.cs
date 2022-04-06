@@ -8,23 +8,24 @@ using System.Threading.Tasks;
 
 namespace Project_X.Contracts.Requests
 {
-    public class AddCandidateRequest
+    public class RegisterCompanyRequest
     {
         [Required]
-        public string FirstName { get; set; }
+        [EmailAddress]
+        public string Email { get; set; }
         [Required]
-        public string LastName { get; set; }
+        public string Password { get; set; }
+        [Required]
+        public string Name { get; set; }
+        [Required]
         public string Address { get; set; }
         [Required]
-        public string Gender { get; set; }
-        [Required]
-        [MaxFileSize(5 * 1024 * 1024)]
-        [AllowedFileExtensions("pdf")]
-        public IFormFile ResumeFile { get; set; }
+        public string Description { get; set; }
+        public string ContactNumber { get; set; }
+        public string Category { get; set; }
         [Required]
         [MaxFileSize(2 * 1024 * 1024)]
         [AllowedFileExtensions("jpg", "jpeg", "png")]
-        public IFormFile PhotoFile { get; set; }
-        public DateTime? Birthdate { get; set; }
+        public IFormFile LogoFile { get; set; }
     }
 }

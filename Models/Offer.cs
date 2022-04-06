@@ -16,7 +16,7 @@ namespace Project_X.Models
         public string Type { get; set; }
         public string ExperienceLowerBound { get; set; }
         public string ExperienceUpperBound { get; set; }
-        public virtual Company Company { get; set; }
-        public virtual ICollection<Application> Applications { get; set; }
+        public Company Company { get; set; }
+        public ICollection<Application> Applications { get; set; }
     }
 }

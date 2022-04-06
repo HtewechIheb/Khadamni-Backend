@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Identity;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -16,6 +17,8 @@ namespace Project_X.Models
         public string Category { get; set; }
         public byte[] LogoFile { get; set; }
         public string LogoFileName { get; set; }
-        public virtual ICollection<Offer> Offers { get; set; }
+        public string AccountId { get; set; }
+        public IdentityUser Account { get; set; }
+        public ICollection<Offer> Offers { get; set; }
     }
 }

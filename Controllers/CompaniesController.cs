@@ -177,20 +177,19 @@ namespace Project_X.Controllers
             {
                 return NotFound($"Company With ID {id} Does Not Exist!");
             }
-                
-            using (MemoryStream photoFileStream = new MemoryStream())
+
+            using MemoryStream photoFileStream = new MemoryStream();
+
+            companyToUpdate.Name = companyRequest.Name ?? companyToUpdate.Name;
+            companyToUpdate.Address = companyRequest.Address ?? companyToUpdate.Address;
+            companyToUpdate.Description = companyRequest.Description ?? companyToUpdate.Description;
+            companyToUpdate.ContactNumber = companyRequest.ContactNumber ?? companyToUpdate.ContactNumber;
+            companyToUpdate.Category = companyRequest.Category ?? companyToUpdate.Category;
+            if (companyRequest.LogoFile != null)
             {
-                companyToUpdate.Name = companyRequest.Name ?? companyToUpdate.Name;
-                companyToUpdate.Address = companyRequest.Address ?? companyToUpdate.Address;
-                companyToUpdate.Description = companyRequest.Description ?? companyToUpdate.Description;
-                companyToUpdate.ContactNumber = companyRequest.ContactNumber ?? companyToUpdate.ContactNumber;
-                companyToUpdate.Category = companyRequest.Category ?? companyToUpdate.Category;
-                if (companyRequest.LogoFile != null)
-                {
-                    await companyRequest.LogoFile.CopyToAsync(photoFileStream);
-                    companyToUpdate.LogoFile = photoFileStream.ToArray();
-                    companyToUpdate.LogoFileName = GenerateFileName(ResumePrefix, companyRequest.LogoFile.FileName);
-                }
+                await companyRequest.LogoFile.CopyToAsync(photoFileStream);
+                companyToUpdate.LogoFile = photoFileStream.ToArray();
+                companyToUpdate.LogoFileName = GenerateFileName(ResumePrefix, companyRequest.LogoFile.FileName);
             }
 
             if (!await _companyService.UpdateCompany(companyToUpdate))

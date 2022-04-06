@@ -193,27 +193,26 @@ namespace Project_X.Controllers
             {
                 return NotFound($"Candidate With ID {id} Does Not Exist!");
             }
-                    
-            using (MemoryStream resumeFileStream = new MemoryStream(), photoFileStream = new MemoryStream())
+
+            using MemoryStream resumeFileStream = new MemoryStream(), photoFileStream = new MemoryStream();
+
+            candidateToUpdate.FirstName = candidateRequest.FirstName ?? candidateToUpdate.FirstName;
+            candidateToUpdate.LastName = candidateRequest.LastName ?? candidateToUpdate.LastName;
+            candidateToUpdate.Address = candidateRequest.Address ?? candidateToUpdate.Address;
+            candidateToUpdate.Gender = candidateRequest.Gender ?? candidateToUpdate.Gender;
+            if (candidateRequest.ResumeFile != null)
             {
-                candidateToUpdate.FirstName = candidateRequest.FirstName ?? candidateToUpdate.FirstName;
-                candidateToUpdate.LastName = candidateRequest.LastName ?? candidateToUpdate.LastName;
-                candidateToUpdate.Address = candidateRequest.Address ?? candidateToUpdate.Address;
-                candidateToUpdate.Gender = candidateRequest.Gender ?? candidateToUpdate.Gender;
-                if (candidateRequest.ResumeFile != null)
-                {
-                    await candidateRequest.ResumeFile.CopyToAsync(resumeFileStream);
-                    candidateToUpdate.ResumeFile = resumeFileStream.ToArray();
-                    candidateToUpdate.ResumeFileName = GenerateFileName(ResumePrefix, candidateRequest.ResumeFile.FileName);
-                }
-                if (candidateRequest.PhotoFile != null)
-                {
-                    await candidateRequest.PhotoFile.CopyToAsync(photoFileStream);
-                    candidateToUpdate.PhotoFile = photoFileStream.ToArray();
-                    candidateToUpdate.PhotoFileName = GenerateFileName(PhotoPrefix, candidateRequest.PhotoFile.FileName);
-                }
-                candidateToUpdate.Birthdate = candidateRequest.Birthdate ?? candidateToUpdate.Birthdate;
+                await candidateRequest.ResumeFile.CopyToAsync(resumeFileStream);
+                candidateToUpdate.ResumeFile = resumeFileStream.ToArray();
+                candidateToUpdate.ResumeFileName = GenerateFileName(ResumePrefix, candidateRequest.ResumeFile.FileName);
             }
+            if (candidateRequest.PhotoFile != null)
+            {
+                await candidateRequest.PhotoFile.CopyToAsync(photoFileStream);
+                candidateToUpdate.PhotoFile = photoFileStream.ToArray();
+                candidateToUpdate.PhotoFileName = GenerateFileName(PhotoPrefix, candidateRequest.PhotoFile.FileName);
+            }
+            candidateToUpdate.Birthdate = candidateRequest.Birthdate ?? candidateToUpdate.Birthdate;
 
             if (!await _candidateService.UpdateCandidate(candidateToUpdate))
             {

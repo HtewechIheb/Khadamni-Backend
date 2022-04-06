@@ -55,7 +55,39 @@ namespace Project_X.Services
             return await GenerateAuthResult(existingUser);
         }
 
-        public async Task<AuthResult> RegisterAsync(string email, string password)
+        public async Task<AuthResult> RegisterCompanyAsync(string email, string password, Company company)
+        {
+            var existingUser = await _userManager.FindByEmailAsync(email);
+
+            if (existingUser != null)
+            {
+                return new AuthResult
+                {
+                    Succeeded = false,
+                    Errors = new[] { $"User With Email {email} Already Exists!" }
+                };
+            }
+
+            var user = new IdentityUser
+            {
+                UserName = email,
+                Email = email
+            };
+
+            var userCreated = await _userManager.CreateAsync(user, password);
+
+            if (!userCreated.Succeeded)
+            {
+                return new AuthResult
+                {
+                    Errors = userCreated.Errors.Select(error => error.Description)
+                };
+            }
+
+            return await GenerateAuthResult(existingUser);
+        }
+
+        public async Task<AuthResult> RegisterCandidateAsync(string email, string password, Candidate candidate)
         {
             var existingUser = await _userManager.FindByEmailAsync(email);
 
@@ -191,8 +223,7 @@ namespace Project_X.Services
                 IsUsed = false,
                 IsRevoked = false,
                 AddedDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddMonths(_jwtConfig.RefreshTokenLifeTime),
-                UserId = user.Id
+                ExpiryDate = DateTime.UtcNow.AddMonths(_jwtConfig.RefreshTokenLifeTime)
             };
 
             await _appDbContext.RefreshTokens.AddAsync(refreshToken);

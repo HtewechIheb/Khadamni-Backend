@@ -12,7 +12,7 @@ namespace Project_X.Models
         public string Status { get; set; }
         public long CandidateId { get; set; }
         public long OfferId { get; set; }
-        public virtual Candidate Candidate { get; set; }
-        public virtual Offer Offer { get; set; }
+        public Candidate Candidate { get; set; }
+        public Offer Offer { get; set; }
     }
 }
