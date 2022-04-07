@@ -1,15 +1,10 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Project_X.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Project_X.Database
 {
-    public class AppDbContext : IdentityDbContext
+    public class AppDbContext : IdentityDbContext<AppUser>
     {
         public virtual DbSet<Company> Companies { get; set; }
         public virtual DbSet<Offer> Offers { get; set; }
@@ -21,6 +16,12 @@ namespace Project_X.Database
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AppUser>()
+               .Property(user => user.Type)
+               .IsRequired();
+
             modelBuilder.Entity<Company>()
                 .HasKey(company => company.Id);
             modelBuilder.Entity<Company>()
@@ -39,12 +40,11 @@ namespace Project_X.Database
                 .Property(company => company.LogoFileName)
                 .IsRequired();
             modelBuilder.Entity<Company>()
-                .HasOne<IdentityUser>(company => company.Account)
-                .WithOne()
+                .HasOne<AppUser>(company => company.Account)
+                .WithOne(user => user.Company)
                 .HasForeignKey<Company>(company => company.AccountId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
-            // TODO: Make AccountId required
-
 
             modelBuilder.Entity<Offer>()
                 .HasKey(offer => offer.Id);
@@ -90,11 +90,11 @@ namespace Project_X.Database
                 .Property(candidate => candidate.PhotoFileName)
                 .IsRequired();
             modelBuilder.Entity<Candidate>()
-                .HasOne<IdentityUser>(candidate => candidate.Account)
-                .WithOne()
+                .HasOne<AppUser>(company => company.Account)
+                .WithOne(user => user.Candidate)
                 .HasForeignKey<Candidate>(candidate => candidate.AccountId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
-            // TODO: Make AccountId required
 
             modelBuilder.Entity<Application>()
                 .HasKey(application => new { application.CandidateId, application.OfferId });
@@ -107,21 +107,23 @@ namespace Project_X.Database
             modelBuilder.Entity<Application>()
                 .HasOne<Candidate>(application => application.Candidate)
                 .WithMany(candidate => candidate.Applications)
+                .HasForeignKey(application => application.CandidateId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Application>()
                 .HasOne<Offer>(application => application.Offer)
                 .WithMany(application => application.Applications)
+                .HasForeignKey(application => application.OfferId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<RefreshToken>()
                 .HasKey(refreshToken => refreshToken.Token);
             modelBuilder.Entity<RefreshToken>()
-                .HasOne<IdentityUser>(refreshToken => refreshToken.User)
+                .HasOne<AppUser>(refreshToken => refreshToken.User)
                 .WithMany()
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
-
-            base.OnModelCreating(modelBuilder);
         }
     }
 }

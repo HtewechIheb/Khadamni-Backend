@@ -1,15 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
-using Microsoft.AspNetCore.Http;
-using Project_X.Services;
 using Project_X.Models;
+using Project_X.Services;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using static Project_X.Shared.GlobalConstants;
 using static Project_X.Shared.GlobalMethods;
 
@@ -66,10 +63,11 @@ namespace Project_X.Controllers
 
         [HttpPost]
         [Route("registercompany")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesDefaultResponseType]
-        public async Task<IActionResult> RegisterCompany([FromBody] RegisterCompanyRequest registerRequest)
+        public async Task<IActionResult> RegisterCompany([FromForm] RegisterCompanyRequest registerRequest)
         {
             if (!ModelState.IsValid)
             {
@@ -118,10 +116,11 @@ namespace Project_X.Controllers
 
         [HttpPost]
         [Route("registercandidate")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesDefaultResponseType]
-        public async Task<IActionResult> RegisterCandidate([FromBody] RegisterCandidateRequest registerRequest)
+        public async Task<IActionResult> RegisterCandidate([FromForm] RegisterCandidateRequest registerRequest)
         {
             if (!ModelState.IsValid)
             {

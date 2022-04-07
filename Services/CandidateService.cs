@@ -1,9 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project_X.Database;
 using Project_X.Models;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Project_X.Services

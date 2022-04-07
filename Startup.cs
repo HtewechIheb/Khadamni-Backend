@@ -1,12 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +8,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Project_X.Configuration;
 using Project_X.Database;
+using Project_X.Models;
 using Project_X.Services;
+using System.Text;
 
 namespace Project_X
 {
@@ -32,7 +28,8 @@ namespace Project_X
         {
             services.Configure<JWTConfig>(Configuration.GetSection("JwtConfig"));
 
-            services.AddDbContext<AppDbContext>(options => {
+            services.AddDbContext<AppDbContext>(options =>
+            {
                 options.UseSqlServer(Configuration.GetConnectionString("ProjectXDb"));
             });
 
@@ -63,7 +60,7 @@ namespace Project_X
                     options.TokenValidationParameters = tokenValidationParams;
                 });
 
-            services.AddDefaultIdentity<IdentityUser>(options =>
+            services.AddDefaultIdentity<AppUser>(options =>
             {
                 options.SignIn.RequireConfirmedAccount = true;
             })
@@ -73,6 +70,7 @@ namespace Project_X
             services.AddScoped<ICandidateService, CandidateService>();
             services.AddScoped<IOfferService, OfferService>();
             services.AddScoped<IApplicationService, ApplicationService>();
+            services.AddScoped<IAuthService, AuthService>();
             services.AddControllers();
             services.AddSwaggerGen();
         }

@@ -1,8 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System;
 
 namespace Project_X.Models
 {
@@ -14,6 +10,6 @@ namespace Project_X.Models
         public bool IsRevoked { get; set; }
         public DateTime AddedDate { get; set; }
         public DateTime ExpiryDate { get; set; }
-        public IdentityUser User { get; set; }
+        public virtual AppUser User { get; set; }
     }
 }

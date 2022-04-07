@@ -1,10 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Project_X.Attributes;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Project_X.Contracts.Requests
 {

@@ -1,14 +1,12 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Project_X.Contracts.Requests;
+using Project_X.Contracts.Responses;
 using Project_X.Models;
 using Project_X.Services;
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Project_X.Contracts.Responses;
-using Project_X.Contracts.Requests;
 
 namespace Project_X.Controllers
 {
@@ -60,12 +58,12 @@ namespace Project_X.Controllers
         public async Task<IActionResult> Get([FromRoute] long id)
         {
             var offer = await _offerService.GetOfferById(id);
-            
+
             if (offer == null)
             {
                 return NotFound($"Offer With ID {id} Does Not Exist!");
             }
-            
+
             var offerResponse = new OfferResponse
             {
                 Id = offer.Id,
@@ -102,7 +100,7 @@ namespace Project_X.Controllers
             }
 
             var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId);
-                
+
             if (associatedCompany == null)
             {
                 return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
@@ -124,7 +122,7 @@ namespace Project_X.Controllers
             {
                 return StatusCode(500, "Internal Error Occured While Adding Offer!");
             }
-                
+
             var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/offers/{offer.Id}";
             var offerResponse = new OfferResponse
             {
@@ -160,7 +158,7 @@ namespace Project_X.Controllers
 
                 return BadRequest(errorResponse);
             }
-                
+
             var offerToUpdate = await _offerService.GetOfferById(id);
 
             if (offerToUpdate == null)
@@ -171,7 +169,7 @@ namespace Project_X.Controllers
             if (offerRequest.CompanyId.HasValue)
             {
                 var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId.Value);
-                
+
                 if (associatedCompany == null)
                 {
                     return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
@@ -227,7 +225,7 @@ namespace Project_X.Controllers
             {
                 return StatusCode(500, "Internal Error Occured While Deleting Offer!");
             }
-            
+
             return NoContent();
         }
     }

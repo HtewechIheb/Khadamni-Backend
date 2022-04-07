@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace Project_X.Models
 {
@@ -16,7 +12,7 @@ namespace Project_X.Models
         public string Type { get; set; }
         public string ExperienceLowerBound { get; set; }
         public string ExperienceUpperBound { get; set; }
-        public Company Company { get; set; }
-        public ICollection<Application> Applications { get; set; }
+        public virtual Company Company { get; set; }
+        public virtual ICollection<Application> Applications { get; set; }
     }
 }

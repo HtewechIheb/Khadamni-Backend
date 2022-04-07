@@ -1,24 +1,23 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
 using Project_X.Models;
 using Project_X.Services;
-using static Project_X.Shared.GlobalConstants;
-using static Project_X.Shared.GlobalMethods;
-using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using System.IO;
-using Microsoft.Net.Http.Headers;
+using static Project_X.Shared.GlobalConstants;
+using static Project_X.Shared.GlobalMethods;
 
 namespace Project_X.Controllers
 {
 
     [ApiController]
     [Route("/api/companies/")]
-    public class CompaniesController: ControllerBase
+    public class CompaniesController : ControllerBase
     {
         private readonly ICompanyService _companyService;
 
@@ -35,7 +34,7 @@ namespace Project_X.Controllers
         {
             var companies = await _companyService.GetCompanies();
             var companiesResponse = new List<CompanyResponse>();
-            foreach(var company in companies)
+            foreach (var company in companies)
             {
                 var companyResponse = new CompanyResponse
                 {
@@ -60,12 +59,12 @@ namespace Project_X.Controllers
         public async Task<IActionResult> Get([FromRoute] long id)
         {
             var company = await _companyService.GetCompanyById(id);
-            
+
             if (company == null)
             {
                 return NotFound($"Company With ID {id} Does Not Exist!");
             }
-                
+
             var companyResponse = new CompanyResponse
             {
                 Id = company.Id,
@@ -144,7 +143,7 @@ namespace Project_X.Controllers
             {
                 return NotFound($"Company With ID {id} Does Not Exist!");
             }
-                
+
             var byteStream = new MemoryStream(company.LogoFile);
             return new FileStreamResult(byteStream, new MediaTypeHeaderValue("application/octet-stream"))
             {
@@ -172,7 +171,7 @@ namespace Project_X.Controllers
                 return BadRequest(errorResponse);
             }
             var companyToUpdate = await _companyService.GetCompanyById(id);
-                
+
             if (companyToUpdate == null)
             {
                 return NotFound($"Company With ID {id} Does Not Exist!");
@@ -196,7 +195,7 @@ namespace Project_X.Controllers
             {
                 return StatusCode(500, "Internal Error Occured While Updating Company!");
             }
-                
+
             var companyResponse = new CompanyResponse
             {
                 Id = companyToUpdate.Id,
@@ -230,7 +229,7 @@ namespace Project_X.Controllers
                 return StatusCode(500, "Internal Error Occured While Deleting Company!");
 
             }
-            
+
             return NoContent();
         }
     }

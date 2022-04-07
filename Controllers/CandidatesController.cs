@@ -1,17 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
 using Project_X.Models;
 using Project_X.Services;
-using static Project_X.Shared.GlobalConstants;
-using static Project_X.Shared.GlobalMethods;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Net.Http.Headers;
+using static Project_X.Shared.GlobalConstants;
+using static Project_X.Shared.GlobalMethods;
 
 namespace Project_X.Controllers
 {
@@ -59,12 +58,12 @@ namespace Project_X.Controllers
         public async Task<IActionResult> Get([FromRoute] long id)
         {
             var candidate = await _candidateService.GetCandidateById(id);
-            
+
             if (candidate == null)
             {
                 return NotFound($"Candidate With ID {id} Does Not Exist!");
             }
-            
+
             var candidateResponse = new CandidateResponse
             {
                 Id = candidate.Id,
@@ -141,12 +140,12 @@ namespace Project_X.Controllers
         public async Task<IActionResult> DownloadResource(long id, string resource)
         {
             var candidate = await _candidateService.GetCandidateById(id);
-           
+
             if (candidate == null)
             {
                 return NotFound($"Candidate With ID {id} Does Not Exist!");
             }
-            
+
             MemoryStream byteStream;
             switch (resource)
             {
@@ -218,7 +217,7 @@ namespace Project_X.Controllers
             {
                 return StatusCode(500, "Internal Error Occured While Updating Candidate!");
             }
-                    
+
             var candidateResponse = new CandidateResponse
             {
                 Id = candidateToUpdate.Id,
@@ -241,7 +240,7 @@ namespace Project_X.Controllers
         public async Task<IActionResult> Delete([FromRoute] long id)
         {
             var candidateToDelete = await _candidateService.GetCandidateById(id);
-            
+
             if (candidateToDelete == null)
             {
                 return NotFound($"Candidate With ID {id} Does Not Exist!");

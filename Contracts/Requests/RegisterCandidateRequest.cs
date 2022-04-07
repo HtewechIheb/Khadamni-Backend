@@ -11,6 +11,7 @@ namespace Project_X.Contracts.Requests
         [EmailAddress]
         public string Email { get; set; }
         [Required]
+        [DataType(DataType.Password)]
         public string Password { get; set; }
         [Required]
         public string FirstName { get; set; }

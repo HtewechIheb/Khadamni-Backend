@@ -4,9 +4,7 @@ using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
 using Project_X.Models;
 using Project_X.Services;
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -69,7 +67,7 @@ namespace Project_X.Controllers
                 associatedCandidate = await _candidateService.GetCandidateById(candidateId.Value);
                 associatedOffer = await _offerService.GetOfferById(offerId.Value);
 
-                if(associatedCandidate == null)
+                if (associatedCandidate == null)
                 {
                     return NotFound($"Candidate With Id {candidateId.Value} Does Not Exist!");
                 }
@@ -81,7 +79,7 @@ namespace Project_X.Controllers
 
                 var application = await _applicationService.GetApplicationByCandidateIdAndOfferId(candidateId.Value, offerId.Value);
 
-                if(application == null)
+                if (application == null)
                 {
                     return NotFound($"Application With Candidate Id {candidateId.Value} And Offer Id {offerId.Value} Does Not Exist!");
                 }
@@ -278,7 +276,7 @@ namespace Project_X.Controllers
         public async Task<IActionResult> Delete([FromRoute] long candidateId, [FromRoute] long offerId)
         {
             var applicationToDelete = await _applicationService.GetApplicationByCandidateIdAndOfferId(candidateId, offerId);
-            
+
             if (applicationToDelete == null)
             {
                 return NotFound($"Application With Candidate Id {candidateId} And Offer Id {offerId} Does Not Exist!");

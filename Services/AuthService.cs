@@ -4,9 +4,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Project_X.Configuration;
 using Project_X.Database;
+using Project_X.Enumerations;
 using Project_X.Models;
 using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
@@ -17,17 +17,21 @@ namespace Project_X.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<AppUser> _userManager;
         private readonly TokenValidationParameters _tokenValidationParams;
         private readonly AppDbContext _appDbContext;
+        private readonly ICompanyService _companyService;
+        private readonly ICandidateService _candidateService;
         private readonly JWTConfig _jwtConfig;
 
-        public AuthService(UserManager<IdentityUser> userManager, IOptionsMonitor<JWTConfig> optionsMonitor, TokenValidationParameters tokenValidationParams, AppDbContext appDbContext)
+        public AuthService(UserManager<AppUser> userManager, IOptionsMonitor<JWTConfig> optionsMonitor, TokenValidationParameters tokenValidationParams, AppDbContext appDbContext, ICompanyService companyService, ICandidateService candidateService)
         {
             _userManager = userManager;
             _jwtConfig = optionsMonitor.CurrentValue;
             _tokenValidationParams = tokenValidationParams;
             _appDbContext = appDbContext;
+            _companyService = companyService;
+            _candidateService = candidateService;
         }
 
         public async Task<AuthResult> LoginAsync(string email, string password)
@@ -38,6 +42,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { $"User With Email {email} Does Not Exist!" }
                 };
             }
@@ -48,6 +53,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { $"Login Failed, Please Verify Your Credentials!" }
                 };
             }
@@ -68,10 +74,11 @@ namespace Project_X.Services
                 };
             }
 
-            var user = new IdentityUser
+            var user = new AppUser
             {
                 UserName = email,
-                Email = email
+                Email = email,
+                Type = UserType.Company
             };
 
             var userCreated = await _userManager.CreateAsync(user, password);
@@ -80,11 +87,25 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = userCreated.Errors.Select(error => error.Description)
                 };
             }
 
-            return await GenerateAuthResult(existingUser);
+            company.Account = user;
+
+            if (!await _companyService.AddCompany(company))
+            {
+                await _userManager.DeleteAsync(user);
+
+                return new AuthResult
+                {
+                    Succeeded = false,
+                    Errors = new[] { "Internal Error Occured While Adding Company!" }
+                };
+            }
+
+            return await GenerateAuthResult(user);
         }
 
         public async Task<AuthResult> RegisterCandidateAsync(string email, string password, Candidate candidate)
@@ -100,10 +121,11 @@ namespace Project_X.Services
                 };
             }
 
-            var user = new IdentityUser
+            var user = new AppUser
             {
                 UserName = email,
-                Email = email
+                Email = email,
+                Type = UserType.Candidate
             };
 
             var userCreated = await _userManager.CreateAsync(user, password);
@@ -112,11 +134,25 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = userCreated.Errors.Select(error => error.Description)
                 };
             }
 
-            return await GenerateAuthResult(existingUser);
+            candidate.Account = user;
+
+            if (!await _candidateService.AddCandidate(candidate))
+            {
+                await _userManager.DeleteAsync(user);
+
+                return new AuthResult
+                {
+                    Succeeded = false,
+                    Errors = new[] { "Internal Error Occured While Adding Candidate!" }
+                };
+            }
+
+            return await GenerateAuthResult(user);
         }
 
         public async Task<AuthResult> RefreshTokenAsync(string token, string refreshToken)
@@ -127,6 +163,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { "Token Is Invalid!" }
                 };
             }
@@ -137,6 +174,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { "Token Hasn't Expired Yet!" }
                 };
             }
@@ -148,6 +186,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { "Refresh Token Does Not Exist!" }
                 };
             }
@@ -156,6 +195,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { "Refresh Token Already Used!" }
                 };
             }
@@ -164,6 +204,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { "Refresh Token Has Been Revoked!" }
                 };
             }
@@ -172,6 +213,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { "Refresh Token Has Expired!" }
                 };
             }
@@ -180,6 +222,7 @@ namespace Project_X.Services
             {
                 return new AuthResult
                 {
+                    Succeeded = false,
                     Errors = new[] { "Refresh Token Does Not Match With This Token!" }
                 };
             }
@@ -193,7 +236,7 @@ namespace Project_X.Services
             return await GenerateAuthResult(user);
         }
 
-        private async Task<AuthResult> GenerateAuthResult(IdentityUser user)
+        private async Task<AuthResult> GenerateAuthResult(AppUser user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
 
@@ -223,7 +266,8 @@ namespace Project_X.Services
                 IsUsed = false,
                 IsRevoked = false,
                 AddedDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddMonths(_jwtConfig.RefreshTokenLifeTime)
+                ExpiryDate = DateTime.UtcNow.AddMonths(_jwtConfig.RefreshTokenLifeTime),
+                User = user
             };
 
             await _appDbContext.RefreshTokens.AddAsync(refreshToken);
@@ -231,6 +275,7 @@ namespace Project_X.Services
 
             return new AuthResult
             {
+                Succeeded = true,
                 Token = serializedToken,
                 RefreshToken = refreshToken.Token
             };

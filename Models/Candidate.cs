@@ -1,9 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Project_X.Models
 {
@@ -20,7 +16,7 @@ namespace Project_X.Models
         public string PhotoFileName { get; set; }
         public DateTime? Birthdate { get; set; }
         public string AccountId { get; set; }
-        public IdentityUser Account { get; set; }
-        public ICollection<Application> Applications { get; set; }
+        public virtual AppUser Account { get; set; }
+        public virtual ICollection<Application> Applications { get; set; }
     }
 }

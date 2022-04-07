@@ -1,9 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace Project_X.Models
 {
@@ -18,7 +13,7 @@ namespace Project_X.Models
         public byte[] LogoFile { get; set; }
         public string LogoFileName { get; set; }
         public string AccountId { get; set; }
-        public IdentityUser Account { get; set; }
-        public ICollection<Offer> Offers { get; set; }
+        public virtual AppUser Account { get; set; }
+        public virtual ICollection<Offer> Offers { get; set; }
     }
 }
