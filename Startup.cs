@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -66,6 +67,16 @@ namespace Project_X
             })
                 .AddEntityFrameworkStores<AppDbContext>();
 
+            services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(builder =>
+                {
+                    builder.AllowAnyHeader();
+                    builder.AllowAnyMethod();
+                    builder.AllowAnyOrigin();
+                });
+            });
+
             services.AddScoped<ICompanyService, CompanyService>();
             services.AddScoped<ICandidateService, CandidateService>();
             services.AddScoped<IOfferService, OfferService>();
@@ -93,6 +104,8 @@ namespace Project_X
             });
 
             app.UseRouting();
+
+            app.UseCors();
 
             app.UseAuthentication();
 

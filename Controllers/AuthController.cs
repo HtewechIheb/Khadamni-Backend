@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
+using Project_X.Enumerations;
 using Project_X.Models;
 using Project_X.Services;
 using System.IO;
@@ -13,14 +14,18 @@ using static Project_X.Shared.GlobalMethods;
 namespace Project_X.Controllers
 {
     [ApiController]
-    [Route("auth")]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly ICompanyService _companyService;
+        private readonly ICandidateService _candidateService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, ICompanyService companyService, ICandidateService candidateService)
         {
             _authService = authService;
+            _companyService = companyService;
+            _candidateService = candidateService;
         }
 
         [HttpPost]

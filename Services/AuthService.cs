@@ -101,7 +101,7 @@ namespace Project_X.Services
                 return new AuthResult
                 {
                     Succeeded = false,
-                    Errors = new[] { "Internal Error Occured While Adding Company!" }
+                    Errors = new[] { $"Internal Error Occured While Adding Company!" }
                 };
             }
 
@@ -148,7 +148,7 @@ namespace Project_X.Services
                 return new AuthResult
                 {
                     Succeeded = false,
-                    Errors = new[] { "Internal Error Occured While Adding Candidate!" }
+                    Errors = new[] { $"Internal Error Occured While Adding Candidate!" }
                 };
             }
 
@@ -241,16 +241,19 @@ namespace Project_X.Services
             var tokenHandler = new JwtSecurityTokenHandler();
 
             var key = Encoding.ASCII.GetBytes(_jwtConfig.Secret);
+            
+            var identity = new ClaimsIdentity(new[]
+            {
+                new Claim("id", user.Id),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim("user_type", user.Type.ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            });
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim("id", user.Id),
-                    new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-                }),
+                Subject = identity,
                 Expires = DateTime.UtcNow.AddMinutes(_jwtConfig.TokenLifeTime),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
@@ -276,6 +279,7 @@ namespace Project_X.Services
             return new AuthResult
             {
                 Succeeded = true,
+                User = user,
                 Token = serializedToken,
                 RefreshToken = refreshToken.Token
             };
