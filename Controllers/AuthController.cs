@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Project_X.Configuration;
 using Project_X.Contracts.Requests;
 using Project_X.Contracts.Responses;
-using Project_X.Enumerations;
 using Project_X.Models;
 using Project_X.Services;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,17 +21,16 @@ namespace Project_X.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly ICompanyService _companyService;
-        private readonly ICandidateService _candidateService;
+        private readonly JWTConfig _jwtConfig;
 
-        public AuthController(IAuthService authService, ICompanyService companyService, ICandidateService candidateService)
+        public AuthController(IAuthService authService, IOptionsMonitor<JWTConfig> optionsMonitor)
         {
+            _jwtConfig = optionsMonitor.CurrentValue;
             _authService = authService;
-            _companyService = companyService;
-            _candidateService = candidateService;
         }
 
         [HttpPost]
+        [AllowAnonymous]
         [Route("login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -57,16 +59,18 @@ namespace Project_X.Controllers
                 return BadRequest(errorResponse);
             }
 
+            SetRefreshTokenCookie(authResult.RefreshToken);
+
             var authResponse = new AuthResponse
             {
                 Token = authResult.Token,
-                RefreshToken = authResult.RefreshToken
             };
 
             return Ok(authResponse);
         }
 
         [HttpPost]
+        [AllowAnonymous]
         [Route("registercompany")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -110,16 +114,18 @@ namespace Project_X.Controllers
                 return BadRequest(errorResponse);
             }
 
+            SetRefreshTokenCookie(authResult.RefreshToken);
+
             var authResponse = new AuthResponse
             {
                 Token = authResult.Token,
-                RefreshToken = authResult.RefreshToken
             };
 
             return Ok(authResponse);
         }
 
         [HttpPost]
+        [AllowAnonymous]
         [Route("registercandidate")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -166,17 +172,19 @@ namespace Project_X.Controllers
                 return BadRequest(errorResponse);
             }
 
+            SetRefreshTokenCookie(authResult.RefreshToken);
+
             var authResponse = new AuthResponse
             {
                 Token = authResult.Token,
-                RefreshToken = authResult.RefreshToken
             };
 
             return Ok(authResponse);
         }
 
         [HttpPost]
-        [Route("refresh")]
+        [AllowAnonymous]
+        [Route("refreshtoken")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesDefaultResponseType]
@@ -192,7 +200,19 @@ namespace Project_X.Controllers
                 return BadRequest(errorResponse);
             }
 
-            var authResult = await _authService.RefreshTokenAsync(refreshTokenRequest.Token, refreshTokenRequest.RefreshToken);
+            var refreshToken = Request.Cookies.FirstOrDefault(cookie => cookie.Key == "refresh_token").Value;
+
+            if(string.IsNullOrEmpty(refreshToken))
+            {
+                var errorResponse = new ErrorResponse
+                {
+                    Errors = new[] { "Refresh Token Cookie Is Not Set!" }
+                };
+
+                return BadRequest(errorResponse);
+            }
+
+            var authResult = await _authService.RefreshTokenAsync(refreshTokenRequest.Token, refreshToken);
 
             if (!authResult.Succeeded)
             {
@@ -204,13 +224,26 @@ namespace Project_X.Controllers
                 return BadRequest(errorResponse);
             }
 
+            SetRefreshTokenCookie(authResult.RefreshToken);
+
             var authResponse = new AuthResponse
             {
                 Token = authResult.Token,
-                RefreshToken = authResult.RefreshToken
             };
 
             return Ok(authResponse);
+        }
+
+        private void SetRefreshTokenCookie(string refreshToken)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddDays(_jwtConfig.RefreshTokenLifeTime),
+            };
+
+            Response.Cookies.Append("refresh_token", refreshToken, cookieOptions);
         }
     }
 }

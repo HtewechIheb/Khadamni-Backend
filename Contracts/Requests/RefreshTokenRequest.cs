@@ -6,7 +6,5 @@ namespace Project_X.Contracts.Requests
     {
         [Required]
         public string Token { get; set; }
-        [Required]
-        public string RefreshToken { get; set; }
     }
 }

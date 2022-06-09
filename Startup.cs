@@ -1,16 +1,20 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Project_X.Configuration;
 using Project_X.Database;
 using Project_X.Models;
 using Project_X.Services;
+using System;
 using System.Text;
 
 namespace Project_X
@@ -43,7 +47,7 @@ namespace Project_X
                 ValidateIssuer = false,
                 ValidateAudience = false,
                 ValidateLifetime = true,
-                RequireExpirationTime = false
+                //ClockSkew = TimeSpan.Zero
             };
 
             services.AddSingleton<TokenValidationParameters>(tokenValidationParams);
@@ -71,9 +75,10 @@ namespace Project_X
             {
                 options.AddDefaultPolicy(builder =>
                 {
+                    builder.SetIsOriginAllowed(_ => true);
                     builder.AllowAnyHeader();
                     builder.AllowAnyMethod();
-                    builder.AllowAnyOrigin();
+                    builder.AllowCredentials();
                 });
             });
 
@@ -82,8 +87,37 @@ namespace Project_X
             services.AddScoped<IOfferService, OfferService>();
             services.AddScoped<IApplicationService, ApplicationService>();
             services.AddScoped<IAuthService, AuthService>();
-            services.AddControllers();
-            services.AddSwaggerGen();
+            services.AddControllers(options =>
+            {
+                options.Filters.Add(new AuthorizeFilter(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build()));
+            });
+            services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo { Title = "Project X", Version = "v1" });
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    In = ParameterLocation.Header,
+                    Description = "Please Enter A Valid Token",
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    BearerFormat = "JWT",
+                    Scheme = "Bearer"
+                });
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        new string[]{}
+                    }
+                });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -94,7 +128,7 @@ namespace Project_X
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseSwagger();
 

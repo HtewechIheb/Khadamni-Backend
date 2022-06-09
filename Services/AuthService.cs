@@ -11,6 +11,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Project_X.Services
@@ -168,18 +169,7 @@ namespace Project_X.Services
                 };
             }
 
-            var expiryDate = long.Parse(validatedToken.Claims.Single(claim => claim.Type == JwtRegisteredClaimNames.Exp).Value);
-            var expiryDateUtc = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(expiryDate);
-            if (expiryDateUtc > DateTime.UtcNow)
-            {
-                return new AuthResult
-                {
-                    Succeeded = false,
-                    Errors = new[] { "Token Hasn't Expired Yet!" }
-                };
-            }
-
-            var storedRefreshToken = await _appDbContext.RefreshTokens.SingleOrDefaultAsync(token => token.Token == refreshToken);
+            var storedRefreshToken = await _appDbContext.RefreshTokens.Include(token => token.User).SingleOrDefaultAsync(token => token.Token == refreshToken);
             var jwtTokenJti = validatedToken.Claims.Single(claim => claim.Type == JwtRegisteredClaimNames.Jti).Value;
 
             if (storedRefreshToken == null)
@@ -188,24 +178,6 @@ namespace Project_X.Services
                 {
                     Succeeded = false,
                     Errors = new[] { "Refresh Token Does Not Exist!" }
-                };
-            }
-
-            if (storedRefreshToken.IsUsed)
-            {
-                return new AuthResult
-                {
-                    Succeeded = false,
-                    Errors = new[] { "Refresh Token Already Used!" }
-                };
-            }
-
-            if (storedRefreshToken.IsRevoked)
-            {
-                return new AuthResult
-                {
-                    Succeeded = false,
-                    Errors = new[] { "Refresh Token Has Been Revoked!" }
                 };
             }
 
@@ -223,17 +195,38 @@ namespace Project_X.Services
                 return new AuthResult
                 {
                     Succeeded = false,
-                    Errors = new[] { "Refresh Token Does Not Match With This Token!" }
+                    Errors = new[] { "Refresh Token Invalid!" }
                 };
             }
 
-            storedRefreshToken.IsUsed = true;
-            _appDbContext.RefreshTokens.Update(storedRefreshToken);
+            if (storedRefreshToken.IsRevoked)
+            {
+                await RevokeAllUserRefreshTokens(storedRefreshToken.User);
+
+                return new AuthResult
+                {
+                    Succeeded = false,
+                    Errors = new[] { "Refresh Token Has Been Revoked!" }
+                };
+            }
+
+            await RevokeRefreshToken(storedRefreshToken);
+
+            return await GenerateAuthResult(storedRefreshToken.User);
+        }
+
+        private async Task RevokeRefreshToken(RefreshToken refreshToken)
+        {
+            refreshToken.IsRevoked = true;
+            
             await _appDbContext.SaveChangesAsync();
+        }
 
-            var user = await _userManager.FindByIdAsync(validatedToken.Claims.Single(claim => claim.Type == "id").Value);
-
-            return await GenerateAuthResult(user);
+        private async Task RevokeAllUserRefreshTokens(AppUser user)
+        {
+            await _appDbContext.RefreshTokens.Include(token => token.User).Where(token => token.User == user).ForEachAsync(token => token.IsRevoked = true);
+        
+            await _appDbContext.SaveChangesAsync();
         }
 
         private async Task<AuthResult> GenerateAuthResult(AppUser user)
@@ -241,14 +234,38 @@ namespace Project_X.Services
             var tokenHandler = new JwtSecurityTokenHandler();
 
             var key = Encoding.ASCII.GetBytes(_jwtConfig.Secret);
-            
+
+            string info = null;
+
+            if(user.Type == UserType.Company)
+            {
+                await _appDbContext.Entry(user).Reference(user => user.Company).LoadAsync();
+
+                info = JsonSerializer.Serialize(user.Company, new JsonSerializerOptions
+                {
+                    IgnoreNullValues = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                });
+            }
+            else if(user.Type == UserType.Candidate)
+            {
+                await _appDbContext.Entry(user).Reference(user => user.Candidate).LoadAsync();
+
+                info = JsonSerializer.Serialize(user.Candidate, new JsonSerializerOptions
+                {
+                    IgnoreNullValues = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                });
+            }
+
             var identity = new ClaimsIdentity(new[]
             {
                 new Claim("id", user.Id),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim("user_type", user.Type.ToString()),
+                new Claim("type", user.Type.ToString().ToLower()),
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("info", info)
             });
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -266,10 +283,9 @@ namespace Project_X.Services
             {
                 Token = GenerateRefreshToken(_jwtConfig.RefreshTokenLength),
                 JwtId = token.Id,
-                IsUsed = false,
                 IsRevoked = false,
                 AddedDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddMonths(_jwtConfig.RefreshTokenLifeTime),
+                ExpiryDate = DateTime.UtcNow.AddDays(_jwtConfig.RefreshTokenLifeTime),
                 User = user
             };
 
@@ -298,6 +314,8 @@ namespace Project_X.Services
         private ClaimsPrincipal ValidateToken(string token)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
+
+            _tokenValidationParams.ValidateLifetime = false;
 
             try
             {

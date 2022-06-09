@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Project_X.Models
 {
@@ -12,7 +13,9 @@ namespace Project_X.Models
         public string Type { get; set; }
         public string ExperienceLowerBound { get; set; }
         public string ExperienceUpperBound { get; set; }
+        [JsonIgnore]
         public virtual Company Company { get; set; }
+        [JsonIgnore]
         public virtual ICollection<Application> Applications { get; set; }
     }
 }
