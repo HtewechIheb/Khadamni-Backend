@@ -49,7 +49,7 @@ namespace Project_X.Database
             modelBuilder.Entity<Offer>()
                 .HasKey(offer => offer.Id);
             modelBuilder.Entity<Offer>()
-                .Property(offer => offer.Category)
+                .Property(offer => offer.Industry)
                 .IsRequired();
             modelBuilder.Entity<Offer>()
                 .Property(offer => offer.Title)
@@ -58,7 +58,7 @@ namespace Project_X.Database
                 .Property(offer => offer.Type)
                 .IsRequired();
             modelBuilder.Entity<Offer>()
-                .Property(offer => offer.ExperienceLowerBound)
+                .Property(offer => offer.MinimumExperience)
                 .IsRequired();
             modelBuilder.Entity<Offer>()
                 .HasOne<Company>(offer => offer.Company)

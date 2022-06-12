@@ -4,8 +4,11 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Project_X.Configuration;
 using Project_X.Database;
-using Project_X.Enumerations;
 using Project_X.Models;
+using Project_X.Models.Enums;
+using Project_X.Repositories.Abstractions;
+using Project_X.Services.Abstractions;
+using Project_X.Utilities;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
@@ -14,25 +17,25 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Project_X.Services
+namespace Project_X.Services.Implementations
 {
     public class AuthService : IAuthService
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly TokenValidationParameters _tokenValidationParams;
         private readonly AppDbContext _appDbContext;
-        private readonly ICompanyService _companyService;
-        private readonly ICandidateService _candidateService;
+        private readonly ICompanyRepository _companyRepository;
+        private readonly ICandidateRepository _candidateRepository;
         private readonly JWTConfig _jwtConfig;
 
-        public AuthService(UserManager<AppUser> userManager, IOptionsMonitor<JWTConfig> optionsMonitor, TokenValidationParameters tokenValidationParams, AppDbContext appDbContext, ICompanyService companyService, ICandidateService candidateService)
+        public AuthService(UserManager<AppUser> userManager, IOptionsMonitor<JWTConfig> optionsMonitor, TokenValidationParameters tokenValidationParams, AppDbContext appDbContext, ICompanyRepository companyService, ICandidateRepository candidateService)
         {
             _userManager = userManager;
             _jwtConfig = optionsMonitor.CurrentValue;
             _tokenValidationParams = tokenValidationParams;
             _appDbContext = appDbContext;
-            _companyService = companyService;
-            _candidateService = candidateService;
+            _companyRepository = companyService;
+            _candidateRepository = candidateService;
         }
 
         public async Task<AuthResult> LoginAsync(string email, string password)
@@ -95,7 +98,7 @@ namespace Project_X.Services
 
             company.Account = user;
 
-            if (!await _companyService.AddCompany(company))
+            if (!await _companyRepository.AddCompany(company))
             {
                 await _userManager.DeleteAsync(user);
 
@@ -142,7 +145,7 @@ namespace Project_X.Services
 
             candidate.Account = user;
 
-            if (!await _candidateService.AddCandidate(candidate))
+            if (!await _candidateRepository.AddCandidate(candidate))
             {
                 await _userManager.DeleteAsync(user);
 

@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Project_X.Services
+namespace Project_X.Repositories.Abstractions
 {
-    public interface IOfferService
+    public interface IOfferRepository
     {
         public Task<IEnumerable<Offer>> GetOffers();
         public Task<Offer> GetOfferById(long id);

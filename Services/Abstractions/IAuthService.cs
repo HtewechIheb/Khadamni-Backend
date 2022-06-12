@@ -1,8 +1,8 @@
-﻿using Project_X.Enumerations;
-using Project_X.Models;
+﻿using Project_X.Models;
+using Project_X.Utilities;
 using System.Threading.Tasks;
 
-namespace Project_X.Services
+namespace Project_X.Services.Abstractions
 {
     public interface IAuthService
     {

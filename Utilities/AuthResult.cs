@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Project_X.Models;
+using System.Collections.Generic;
 
-namespace Project_X.Models
+namespace Project_X.Utilities
 {
     public class AuthResult
     {

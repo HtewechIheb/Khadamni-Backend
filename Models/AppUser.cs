@@ -1,15 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Project_X.Enumerations;
-using System.Text.Json.Serialization;
+using Project_X.Models.Enums;
 
 namespace Project_X.Models
 {
     public class AppUser : IdentityUser
     {
         public UserType Type { get; set; }
-        [JsonIgnore]
         public virtual Company Company { get; set; }
-        [JsonIgnore]
         public virtual Candidate Candidate { get; set; }
     }
 }

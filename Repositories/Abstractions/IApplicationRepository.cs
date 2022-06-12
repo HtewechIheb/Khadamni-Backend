@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Project_X.Services
+namespace Project_X.Repositories.Abstractions
 {
-    public interface IApplicationService
+    public interface IApplicationRepository
     {
         public Task<IEnumerable<Application>> GetApplications();
         public Task<IEnumerable<Application>> GetApplicationsByCandidateId(long id);

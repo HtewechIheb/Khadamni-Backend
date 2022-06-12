@@ -1,17 +1,18 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Project_X.Database;
 using Project_X.Models;
+using Project_X.Repositories.Abstractions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Project_X.Services
+namespace Project_X.Repositories.Implementations
 {
-    public class ApplicationService : IApplicationService
+    public class ApplicationRepository : IApplicationRepository
     {
         private readonly AppDbContext _appDbContext;
 
-        public ApplicationService(AppDbContext appDbContext)
+        public ApplicationRepository(AppDbContext appDbContext)
         {
             _appDbContext = appDbContext;
         }

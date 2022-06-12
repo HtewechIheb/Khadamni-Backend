@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Project_X.Contracts.Requests;
-using Project_X.Contracts.Responses;
+using Project_X.DTO.Requests;
+using Project_X.DTO.Responses;
 using Project_X.Models;
-using Project_X.Services;
+using Project_X.Repositories.Abstractions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,13 +15,15 @@ namespace Project_X.Controllers
     [Route("/api/offers/")]
     public class OffersController : ControllerBase
     {
-        private readonly IOfferService _offerService;
-        private readonly ICompanyService _companyService;
+        private readonly UserManager<AppUser> _userManager;
+        private readonly IOfferRepository _offerRepository;
+        private readonly ICompanyRepository _companyRepository;
 
-        public OffersController(IOfferService offerService, ICompanyService companyService)
+        public OffersController(UserManager<AppUser> userManager, IOfferRepository offerService, ICompanyRepository companyService)
         {
-            _offerService = offerService;
-            _companyService = companyService;
+            _userManager = userManager;
+            _offerRepository = offerService;
+            _companyRepository = companyService;
         }
 
         [HttpGet]
@@ -29,25 +32,29 @@ namespace Project_X.Controllers
         [ProducesDefaultResponseType]
         public async Task<IActionResult> GetAll()
         {
-            var offers = await _offerService.GetOffers();
-            var offersResponse = new List<OfferResponse>();
+            var offers = await _offerRepository.GetOffers();
+            var offerDTOs = new List<OfferDTO>();
             foreach (var offer in offers)
             {
-                var offerResponse = new OfferResponse
+                var offerDTO = new OfferDTO
                 {
                     Id = offer.Id,
-                    Category = offer.Category,
+                    Industry = offer.Industry,
                     Title = offer.Title,
                     Description = offer.Description,
                     Spots = offer.Spots,
+                    Salary = offer.Salary,
+                    Degree = offer.Degree,
+                    Gender = offer.Gender,
+                    Skills = offer.Skills.Split("/"),
                     Type = offer.Type,
-                    ExperienceLowerBound = offer.ExperienceLowerBound,
-                    ExperienceUpperBound = offer.ExperienceUpperBound
+                    MinimumExperience = offer.MinimumExperience,
+                    RecommendedExperience = offer.RecommendedExperience
                 };
 
-                offersResponse.Add(offerResponse);
+                offerDTOs.Add(offerDTO);
             }
-            return Ok(offersResponse);
+            return Ok(offerDTOs);
         }
 
         [HttpGet]
@@ -57,153 +64,198 @@ namespace Project_X.Controllers
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Get([FromRoute] long id)
         {
-            var offer = await _offerService.GetOfferById(id);
+            var offer = await _offerRepository.GetOfferById(id);
 
             if (offer == null)
             {
                 return NotFound($"Offer With ID {id} Does Not Exist!");
             }
 
-            var offerResponse = new OfferResponse
+            var offerDTO = new OfferDTO
             {
                 Id = offer.Id,
-                Category = offer.Category,
+                Industry = offer.Industry,
                 Title = offer.Title,
                 Description = offer.Description,
                 Spots = offer.Spots,
+                Salary = offer.Salary,
+                Degree = offer.Degree,
+                Gender = offer.Gender,
+                Skills = offer.Skills.Split("/"),
                 Type = offer.Type,
-                ExperienceLowerBound = offer.ExperienceLowerBound,
-                ExperienceUpperBound = offer.ExperienceUpperBound
+                MinimumExperience = offer.MinimumExperience,
+                RecommendedExperience = offer.RecommendedExperience
             };
 
-            return Ok(offerResponse);
+            return Ok(offerDTO);
+        }
+
+        [HttpGet]
+        [Route("companies/{id}/offers")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesDefaultResponseType]
+        public async Task<IActionResult> GetByCompany([FromRoute] long id)
+        {
+            var company = await _companyRepository.GetCompanyById(id);
+
+            if(company == null)
+            {
+                return NotFound($"Company With Id {id} Does Not Exist!");
+            }
+
+            var offers = company.Offers.ToList();
+            var offersDTO = new List<OfferDTO>();
+            foreach(var offer in offers)
+            {
+                var offerDTO = new OfferDTO
+                {
+                    Id = offer.Id,
+                    Industry = offer.Industry,
+                    Title = offer.Title,
+                    Description = offer.Description,
+                    Spots = offer.Spots,
+                    Salary = offer.Salary,
+                    Degree = offer.Degree,
+                    Gender = offer.Gender,
+                    Skills = offer.Skills.Split("/"),
+                    Type = offer.Type,
+                    MinimumExperience = offer.MinimumExperience,
+                    RecommendedExperience = offer.RecommendedExperience
+                };
+
+                offersDTO.Add(offerDTO);
+            }
+
+            return Ok(offersDTO);
         }
 
         [HttpPost]
         [Route("")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDTO), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
         [ProducesDefaultResponseType]
-        public async Task<IActionResult> Add([FromForm] AddOfferRequest offerRequest)
+        public async Task<IActionResult> Add([FromForm] AddOfferDTO addOfferDTO)
         {
             if (!ModelState.IsValid)
             {
-                var errorResponse = new ErrorResponse
+                var errorDTO = new ErrorDTO
                 {
                     Errors = ModelState.Values.SelectMany(value => value.Errors.Select(error => error.ErrorMessage))
                 };
 
-                return BadRequest(errorResponse);
+                return BadRequest(errorDTO);
             }
 
-            var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId);
-
-            if (associatedCompany == null)
-            {
-                return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
-            }
+            var loggedInUser = await _userManager.FindByNameAsync(User.Identity.Name);
+            var associatedCompany = loggedInUser.Company;
 
             var offer = new Offer
             {
-                Category = offerRequest.Category.ToString(),
-                Title = offerRequest.Title,
-                Description = offerRequest.Description,
-                Spots = offerRequest.Spots,
-                Type = offerRequest.Type.ToString(),
-                ExperienceLowerBound = offerRequest.ExperienceLowerBound,
-                ExperienceUpperBound = offerRequest.ExperienceUpperBound,
+                Industry = addOfferDTO.Industry,
+                Title = addOfferDTO.Title,
+                Description = addOfferDTO.Description,
+                Spots = addOfferDTO.Spots,
+                Salary = addOfferDTO.Salary,
+                Degree = addOfferDTO.Degree,
+                Gender = addOfferDTO.Gender,
+                Skills = string.Join("/", addOfferDTO.Skills),
+                Type = addOfferDTO.Type,
+                MinimumExperience = addOfferDTO.MinimumExperience,
+                RecommendedExperience = addOfferDTO.RecommendedExperience,
                 Company = associatedCompany
             };
 
-            if (!await _offerService.AddOffer(offer))
+            if (!await _offerRepository.AddOffer(offer))
             {
                 return StatusCode(500, "Internal Error Occured While Adding Offer!");
             }
 
             var locationUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/api/offers/{offer.Id}";
-            var offerResponse = new OfferResponse
+            var offerDTO = new OfferDTO
             {
                 Id = offer.Id,
-                Category = offer.Category,
+                Industry = offer.Industry,
                 Title = offer.Title,
                 Description = offer.Description,
                 Spots = offer.Spots,
+                Salary = offer.Salary,
+                Degree = offer.Degree,
+                Gender = offer.Gender,
+                Skills = offer.Skills.Split("/"),
                 Type = offer.Type,
-                ExperienceLowerBound = offer.ExperienceLowerBound,
-                ExperienceUpperBound = offer.ExperienceUpperBound
+                MinimumExperience = offer.MinimumExperience,
+                RecommendedExperience = offer.RecommendedExperience,
+                CompanyId = offer.Company.Id
             };
 
-            return Created(locationUrl, offerResponse);
+            return Created(locationUrl, offerDTO);
         }
 
         [HttpPut]
         [Route("{id:long}")]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ErrorDTO), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
         [ProducesDefaultResponseType]
-        public async Task<IActionResult> Update([FromForm] UpdateOfferRequest offerRequest, [FromRoute] long id)
+        public async Task<IActionResult> Update([FromForm] UpdateOfferDTO updateOfferDTO, [FromRoute] long id)
         {
             if (!ModelState.IsValid)
             {
-                var errorResponse = new ErrorResponse
+                var errorDTO = new ErrorDTO
                 {
                     Errors = ModelState.Values.SelectMany(value => value.Errors.Select(error => error.ErrorMessage))
                 };
 
-                return BadRequest(errorResponse);
+                return BadRequest(errorDTO);
             }
 
-            var offerToUpdate = await _offerService.GetOfferById(id);
+            var offerToUpdate = await _offerRepository.GetOfferById(id);
 
             if (offerToUpdate == null)
             {
                 return NotFound($"Offer With ID {id} Does Not Exist!");
             }
 
-            if (offerRequest.CompanyId.HasValue)
-            {
-                var associatedCompany = await _companyService.GetCompanyById(offerRequest.CompanyId.Value);
+            offerToUpdate.Industry = updateOfferDTO.Industry.ToString() ?? offerToUpdate.Industry;
+            offerToUpdate.Title = updateOfferDTO.Title ?? offerToUpdate.Title;
+            offerToUpdate.Description = updateOfferDTO.Description ?? offerToUpdate.Description;
+            offerToUpdate.Spots = updateOfferDTO.Spots ?? offerToUpdate.Spots;
+            offerToUpdate.Salary = updateOfferDTO.Salary ?? offerToUpdate.Salary;
+            offerToUpdate.Degree = updateOfferDTO.Degree ?? offerToUpdate.Degree;
+            offerToUpdate.Gender = updateOfferDTO.Gender ?? offerToUpdate.Gender;
+            offerToUpdate.Skills = updateOfferDTO.Skills is null ? string.Join("/", updateOfferDTO.Skills) : offerToUpdate.Skills;
+            offerToUpdate.Type = updateOfferDTO.Type.ToString() ?? offerToUpdate.Type;
+            offerToUpdate.MinimumExperience = updateOfferDTO.MinimumExperience ?? offerToUpdate.MinimumExperience;
+            offerToUpdate.RecommendedExperience = updateOfferDTO.RecommendedExperience ?? offerToUpdate.RecommendedExperience;
 
-                if (associatedCompany == null)
-                {
-                    return NotFound($"Company With Id {offerRequest.CompanyId} Does Not Exist!");
-                }
-
-                offerToUpdate.Company = associatedCompany;
-            }
-
-            offerToUpdate.Category = offerRequest.Category.ToString() ?? offerToUpdate.Category;
-            offerToUpdate.Title = offerRequest.Title ?? offerToUpdate.Title;
-            offerToUpdate.Description = offerRequest.Description ?? offerToUpdate.Description;
-            offerToUpdate.Spots = offerRequest.Spots ?? offerToUpdate.Spots;
-            offerToUpdate.Type = offerRequest.Type.ToString() ?? offerToUpdate.Type;
-            offerToUpdate.ExperienceLowerBound = offerRequest.ExperienceLowerBound ?? offerToUpdate.ExperienceLowerBound;
-            offerToUpdate.ExperienceUpperBound = offerRequest.ExperienceUpperBound ?? offerToUpdate.ExperienceUpperBound;
-
-            if (!await _offerService.UpdateOffer(offerToUpdate))
+            if (!await _offerRepository.UpdateOffer(offerToUpdate))
             {
                 return StatusCode(500, "Internal Error Occured While Updating Offer!");
             }
 
-            var offerResponse = new OfferResponse
+            var offerDTO = new OfferDTO
             {
                 Id = offerToUpdate.Id,
-                Category = offerToUpdate.Category,
+                Industry = offerToUpdate.Industry,
                 Title = offerToUpdate.Title,
                 Description = offerToUpdate.Description,
                 Spots = offerToUpdate.Spots,
+                Salary = offerToUpdate.Salary,
+                Degree = offerToUpdate.Degree,
+                Gender = offerToUpdate.Gender,
+                Skills = offerToUpdate.Skills.Split("/"),
                 Type = offerToUpdate.Type,
-                ExperienceLowerBound = offerToUpdate.ExperienceLowerBound,
-                ExperienceUpperBound = offerToUpdate.ExperienceUpperBound
+                MinimumExperience = offerToUpdate.MinimumExperience,
+                RecommendedExperience = offerToUpdate.RecommendedExperience
             };
 
-            return Ok(offerResponse);
+            return Ok(offerDTO);
         }
 
         [HttpDelete]
@@ -214,14 +266,14 @@ namespace Project_X.Controllers
         [ProducesDefaultResponseType]
         public async Task<IActionResult> Delete([FromRoute] long id)
         {
-            var offerToDelete = await _offerService.GetOfferById(id);
+            var offerToDelete = await _offerRepository.GetOfferById(id);
 
             if (offerToDelete == null)
             {
                 return NotFound($"Offer With ID {id} Does Not Exist!");
             }
 
-            if (!await _offerService.DeleteOffer(id))
+            if (!await _offerRepository.DeleteOffer(id))
             {
                 return StatusCode(500, "Internal Error Occured While Deleting Offer!");
             }

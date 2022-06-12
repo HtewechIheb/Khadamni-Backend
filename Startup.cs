@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +12,10 @@ using Microsoft.OpenApi.Models;
 using Project_X.Configuration;
 using Project_X.Database;
 using Project_X.Models;
-using Project_X.Services;
-using System;
+using Project_X.Repositories.Abstractions;
+using Project_X.Repositories.Implementations;
+using Project_X.Services.Abstractions;
+using Project_X.Services.Implementations;
 using System.Text;
 
 namespace Project_X
@@ -83,15 +84,17 @@ namespace Project_X
                 });
             });
 
-            services.AddScoped<ICompanyService, CompanyService>();
-            services.AddScoped<ICandidateService, CandidateService>();
-            services.AddScoped<IOfferService, OfferService>();
-            services.AddScoped<IApplicationService, ApplicationService>();
+            services.AddScoped<ICompanyRepository, CompanyRepository>();
+            services.AddScoped<ICandidateRepository, CandidateRepository>();
+            services.AddScoped<IOfferRepository, OfferRepository>();
+            services.AddScoped<IApplicationRepository, ApplicationRepository>();
             services.AddScoped<IAuthService, AuthService>();
+
             services.AddControllers(options =>
             {
                 options.Filters.Add(new AuthorizeFilter(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build()));
             });
+
             services.AddSwaggerGen(options =>
             {
                 options.SwaggerDoc("v1", new OpenApiInfo { Title = "Project X", Version = "v1" });

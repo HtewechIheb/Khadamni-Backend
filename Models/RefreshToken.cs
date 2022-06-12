@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text.Json.Serialization;
 
 namespace Project_X.Models
 {
@@ -10,7 +9,6 @@ namespace Project_X.Models
         public bool IsRevoked { get; set; }
         public DateTime AddedDate { get; set; }
         public DateTime ExpiryDate { get; set; }
-        [JsonIgnore]
         public virtual AppUser User { get; set; }
     }
 }

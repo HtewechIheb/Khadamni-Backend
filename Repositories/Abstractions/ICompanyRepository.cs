@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Project_X.Services
+namespace Project_X.Repositories.Abstractions
 {
-    public interface ICompanyService
+    public interface ICompanyRepository
     {
         public Task<IEnumerable<Company>> GetCompanies();
         public Task<bool> AddCompany(Company company);
