@@ -35,6 +35,7 @@ namespace Project_X
 
             services.AddDbContext<AppDbContext>(options =>
             {
+                options.UseLazyLoadingProxies();
                 options.UseSqlServer(Configuration.GetConnectionString("ProjectXDb"));
             });
 
